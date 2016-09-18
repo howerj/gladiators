@@ -44,18 +44,19 @@ void *allocate(size_t sz);
 double rad2deg(double rad);
 double deg2rad(double deg);
 void set_color(color_t color);
-void draw_regular_polygon(double x, double y, double orientation, double radius, shape_t shape, color_t color);
+void draw_regular_polygon_filled(double x, double y, double orientation, double radius, shape_t shape, color_t color);
+void draw_regular_polygon_line(double x, double y, double orientation, double radius, shape_t shape, double thickness, color_t color);
 void draw_line(double x, double y, double angle, double magnitude, double thickness, color_t color);
-int draw_text(double x, double y, const char *fmt, ...);
-int vdraw_text(double x, double y, const char *fmt, va_list ap);
+int draw_text(color_t color, double x, double y, const char *fmt, ...);
+int vdraw_text(color_t color, double x, double y, const char *fmt, va_list ap);
 
 prng_t *new_prng(uint64_t seed);
 uint32_t prng(prng_t *state);
 double prngf(prng_t *state);
 void delete_prng(prng_t *state);
 
-void fill_textbox(textbox_t *t, const char *fmt, ...);
-void draw_textbox(textbox_t *t);
+void fill_textbox(color_t color, textbox_t *t, const char *fmt, ...);
+void draw_textbox(color_t color, textbox_t *t);
 
 void draw_rectangle(double x, double y, double width, double height, color_t color, bool lines, double thickness);
 

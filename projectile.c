@@ -23,7 +23,7 @@ void projectile_draw(projectile_t *p)
 {
 	if(!projectile_is_active(p))
 		return;
-	draw_regular_polygon(p->x, p->y, p->orientation, PROJECTILE_SIZE, TRIANGLE, team_to_color(p->team));
+	draw_regular_polygon_filled(p->x, p->y, p->orientation, PROJECTILE_SIZE, TRIANGLE, team_to_color(p->team));
 }
 
 void projectile_update(projectile_t *p)

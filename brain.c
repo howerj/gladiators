@@ -9,7 +9,7 @@
 typedef struct {
 	size_t weight_count;
 	double bias;
-	double threshold; /*not used at the moment*/
+	double threshold; /**@note not used at the moment*/
 	double weights[];
 } neuron_t;
 
@@ -24,17 +24,47 @@ struct brain_t {
 
 static prng_t *rstate;
 
+static double randomer(void)
+{
+	if(!rstate) /**@warning not threadsafe*/
+		rstate = new_prng(13);
+	double r = prngf(rstate);
+	return r * BRAIN_MAX_WEIGHT;
+}
+
 static neuron_t *neuron_new(bool rand, size_t length)
 {
 	neuron_t *n = allocate(sizeof(*n) + sizeof(n->weights[0])*length);
-	if(!rstate) /**@warning not threadsafe*/
-		rstate = new_prng(13);
-
-	n->bias = rand ? (prngf(rstate) * BRAIN_MAX_WEIGHT) : 1.0;
+	n->bias = rand ? randomer() : 1.0;
 	n->weight_count = length;
 	for(size_t i = 0; i < length; i++)
-		n->weights[i] = rand ? (prngf(rstate) * BRAIN_MAX_WEIGHT) : 1.0; 
+		n->weights[i] = rand ? randomer() : 1.0; 
 	return n;
+}
+
+static double mutation(double original, size_t length)
+{
+	double rate = prngf(rstate);
+	if(rate <= (MUTATION_RATE/length))
+		return randomer();
+	return original;
+}
+
+static void neuron_mutate(neuron_t *n)
+{
+	n->bias = mutation(n->bias, n->weight_count);
+	n->threshold = mutation(n->bias, n->weight_count);
+	for(size_t i = 0; i < n->weight_count; i++)
+		n->weights[i] = mutation(n->weights[i], n->weight_count);
+}
+
+static void neuron_copy_over(neuron_t *dst, const neuron_t *src)
+{
+	dst->bias = src->bias;
+	dst->weight_count = src->weight_count;
+	dst->threshold = src->threshold;
+	for(size_t i = 0; i < src->weight_count; i++)
+		dst->weights[i] = src->weights[i];
 }
 
 static void neuron_print(FILE *output, neuron_t *n)
@@ -60,7 +90,7 @@ void brain_print(FILE *output, brain_t *b)
 	layer_print(output, b->length, 0, b->layer2);
 }
 
-brain_t *brain_new(size_t length)
+brain_t *brain_new(bool rand, size_t length)
 {
 	brain_t *b   = allocate(sizeof(*b));
 	b->input     = allocate(sizeof(b->input[0])    * length);
@@ -69,13 +99,23 @@ brain_t *brain_new(size_t length)
 	b->layer2    = allocate(sizeof(b->layer2[0])   * length);
 	b->layer2out = allocate(sizeof(b->layer2out[0])* length);
 	for(size_t i = 0; i < length; i++) {
-		b->layer1[i] = neuron_new(true, length);
-		b->layer2[i] = neuron_new(true, length);
+		b->layer1[i] = neuron_new(rand, length);
+		b->layer2[i] = neuron_new(rand, length);
 	}
 	b->length = length;
-	if(debug_mode)
+	if(debug_mode && rand)
 		brain_print(stdout, b);
 	return b;
+}
+
+brain_t *brain_copy(const brain_t *b)
+{
+	brain_t *n = brain_new(false, b->length);
+	for(size_t i = 0; i < b->length; i++) {
+		neuron_copy_over(n->layer1[i], b->layer1[i]);
+		neuron_copy_over(n->layer2[i], b->layer2[i]);
+	}
+	return n;
 }
 
 void brain_delete(brain_t *b)
@@ -94,7 +134,7 @@ static double calculate_response(neuron_t *n, double in[], size_t len)
 {    /* see http://www.cs.bham.ac.uk/~jxb/NN/nn.html*/
 	assert(n->weight_count == len);
 	double total = n->bias;
-	for(size_t i; i < len; i++)
+	for(size_t i = 0; i < len; i++)
 		total += in[i] * n->weights[i];
 	return 1.0 / (1.0 + exp(-total));
 }
@@ -113,6 +153,9 @@ void brain_update(brain_t *b, const double inputs[], size_t in_length, double ou
 
 void brain_mutate(brain_t *b)
 {
-	UNUSED(b);
+	for(size_t i = 0; i < b->length; i++) {
+		neuron_mutate(b->layer1[i]);
+		neuron_mutate(b->layer2[i]);
+	}
 }
 

@@ -5,7 +5,7 @@
 #define GLADIATOR_HEALTH            (2)
 #define GLADIATOR_FIRE_TIMEOUT      (15)
 #define GLADIATOR_BRAIN_LENGTH      (5)
-#define GLADIATOR_DISTANCE_PER_TICK (0.5)
+#define GLADIATOR_DISTANCE_PER_TICK (0.7)
 /**@note this could be added to a gladiators genetic code */
 #define GLADIATOR_FIRE_THRESHOLD    (0.75)
 #define GLADIATOR_VISION            (15)
@@ -45,6 +45,7 @@ typedef enum {
 
 void gladiator_draw(gladiator_t *g);
 gladiator_t *gladiator_new(unsigned team, double x, double y, double orientation);
+gladiator_t *gladiator_copy(gladiator_t *g);
 void gladiator_update(gladiator_t *g, const double inputs[], double outputs[]);
 void gladiator_delete(gladiator_t *g);
 double gladiator_fitness(gladiator_t *g);

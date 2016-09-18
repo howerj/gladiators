@@ -1,7 +1,7 @@
 #ifndef PROJECTILE_H
 #define PROJECTILE_H
 
-#define PROJECTILE_DISTANCE_PER_TICK (1)
+#define PROJECTILE_DISTANCE_PER_TICK (2)
 #define PROJECTILE_RANGE             (60)
 #define PROJECTILE_SIZE              (1)
 #define PROJECTILE_DAMAGE            (1)

@@ -15,7 +15,7 @@
 
 /**@todo Turn into configurable items, along with object properties */
 #define TICK_MS                   (15)
-#define MAX_TICKS_PER_GENERATION  (4000)
+#define MAX_TICKS_PER_GENERATION  (500)
 #define WINDOW_X                  (60)
 #define WINDOW_Y                  (20)
 #define MAX_GLADIATORS            (3)
@@ -102,7 +102,7 @@ static double fps(void)
 static bool detect_projectile_collision(gladiator_t *g)
 { 
 	for(size_t i = 0; i < MAX_GLADIATORS; i++) {
-		if(projectiles[i]->team == g->team || g->health < 0)
+		if((projectiles[i]->team == g->team) || (g->health < 0) || !projectile_is_active(projectiles[i]))
 			continue;
 		double dx = g->x - projectiles[i]->x;
 		double dy = g->y - projectiles[i]->y;
@@ -144,8 +144,8 @@ static bool detect_line_circle_intersection(
 		double Fy = (t-dt)*Dy + Ay;
 		double Gx = (t+dt)*Dx + Ax;
 		double Gy = (t+dt)*Dy + Ay;
-		draw_regular_polygon(Fx, Fy, 0, 0.5, CIRCLE, CYAN);
-		draw_regular_polygon(Gx, Gy, 0, 0.5, CIRCLE, BROWN);
+		draw_regular_polygon_filled(Fx, Fy, 0, 0.5, CIRCLE, CYAN);
+		draw_regular_polygon_filled(Gx, Gy, 0, 0.5, CIRCLE, BROWN);
 		return true;
 	} else if(lec == Cradius) {
 		return true;
@@ -208,12 +208,17 @@ static void update_scene(void)
 	double inputs[GLADIATOR_IN_LAST_INPUT];
 	double outputs[GLADIATOR_OUT_LAST_OUTPUT];
 
+	draw_regular_polygon_line(Xmax/2, Ymax/2, PI/4, sqrt(Ymax*Ymax/2), SQUARE, 0.5, WHITE);
+
 	for(unsigned i = 0; i < MAX_GLADIATORS; i++)
 		detect_projectile_collision(gladiators[i]);
 	for(unsigned i = 0; i < MAX_GLADIATORS; i++)
 		projectile_update(projectiles[i]);
 
 	for(unsigned i = 0; i < MAX_GLADIATORS; i++) {
+		if(gladiators[i]->health < 0)
+			continue;
+
 		memset(inputs,  0, sizeof(inputs));
 		memset(outputs, 0, sizeof(outputs));
 
@@ -234,20 +239,57 @@ static void draw_debug_info()
 {
 	if(!debug_mode)
 		return;
-	textbox_t t = { .x = 0, .y = Ymax - Ymax/40, .draw_box = false };
-	fill_textbox(&t, "generation: %u", generation);
-	fill_textbox(&t, "tick:       %u", tick);
-	fill_textbox(&t, "fps:        %f", fps());
+	textbox_t t = { .x = Xmin + Xmax/40, .y = Ymax - Ymax/40, .draw_box = false };
+	fill_textbox(WHITE, &t, "generation: %u", generation);
+	fill_textbox(WHITE, &t, "tick:       %u", tick);
+	fill_textbox(WHITE, &t, "fps:        %f", fps());
 
 	for(size_t i = 0; i < MAX_GLADIATORS; i++) {
-		fill_textbox(&t, "gladiator:  %u", gladiators[i]->team, gladiators[i]->team);
-		fill_textbox(&t, "health      %f", gladiators[i]->health);
-		fill_textbox(&t, "angle       %f", gladiators[i]->orientation);
-		fill_textbox(&t, "hit         %u", gladiators[i]->hits);
-		fill_textbox(&t, "fitness     %f", gladiator_fitness(gladiators[i]));
+		color_t c = team_to_color(gladiators[i]->team);
+		fill_textbox(c, &t, "gladiator:  %u", gladiators[i]->team); 
+		fill_textbox(c, &t, "health      %f", gladiators[i]->health);
+		fill_textbox(c, &t, "angle       %f", gladiators[i]->orientation);
+		fill_textbox(c, &t, "hit         %u", gladiators[i]->hits);
+		fill_textbox(c, &t, "fitness     %f", gladiator_fitness(gladiators[i]));
 	}
 
-	draw_textbox(&t);
+	draw_textbox(GREEN, &t);
+}
+
+static void new_generation()
+{
+	size_t max = 0, min = 0;
+	double maxf = 0, minf = 0;
+	for(size_t i = 0; i < MAX_GLADIATORS; i++) {
+		double fit = gladiator_fitness(gladiators[i]);
+		if(fit > maxf) {
+			max = i;
+			maxf = fit;
+		}
+		if(fit < minf) {
+			min = i;
+			minf = fit;
+		}
+	}
+	gladiator_t *strongest = gladiator_copy(gladiators[max]);
+	gladiator_delete(gladiators[min]);
+	gladiators[min] = strongest;
+
+	for(size_t i = 0; i < MAX_GLADIATORS; i++)
+		projectiles[i]->travelled += PROJECTILE_RANGE;
+
+	for(size_t i = 0; i < MAX_GLADIATORS; i++)
+		gladiator_mutate(gladiators[i]);
+
+	for(size_t i = 0; i < MAX_GLADIATORS; i++) {
+		gladiators[i]->health = GLADIATOR_HEALTH;
+		gladiators[i]->hits = 0;
+		gladiators[i]->team = i;
+		gladiators[i]->x = prngf(rstate) * Xmax;
+		gladiators[i]->y = prngf(rstate) * Ymax;
+		gladiators[i]->orientation = prngf(rstate) * 2 * PI;
+	}
+
 }
 
 static void draw_scene(void)
@@ -264,6 +306,11 @@ static void draw_scene(void)
 	draw_debug_info();
 
 	if(next != tick) {
+		if(tick > MAX_TICKS_PER_GENERATION) {
+			new_generation();
+			tick = 0;
+			generation++;
+		}
 		next = tick;
 		update_scene();
 	}
@@ -297,8 +344,8 @@ static void timer_callback(int value)
 
 int main(int argc, char **argv)
 {
+	/**@todo add command line arguments for debugging information*/
 	initialize_arena();
-
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH );
 	glutInitWindowPosition(WINDOW_X, WINDOW_Y);

@@ -169,10 +169,16 @@ double shape_to_sides(shape_t shape)
 	return sides[shape];
 }
 
-void draw_regular_polygon(double x, double y, double orientation, double radius, shape_t shape, color_t color)
+void draw_regular_polygon_filled(double x, double y, double orientation, double radius, shape_t shape, color_t color)
 {
 	double sides = shape_to_sides(shape);
 	_draw_regular_polygon(x, y, orientation, radius, sides, false, 0, color);
+}
+
+void draw_regular_polygon_line(double x, double y, double orientation, double radius, shape_t shape, double thickness, color_t color)
+{
+	double sides = shape_to_sides(shape);
+	_draw_regular_polygon(x, y, orientation, radius, sides, true, thickness, color);
 }
 
 static uint32_t temper(uint32_t x)
@@ -230,14 +236,14 @@ static int draw_string(const char *msg)
 	return len;
 }
 
-int vdraw_text(double x, double y, const char *fmt, va_list ap)
+int vdraw_text(color_t color, double x, double y, const char *fmt, va_list ap)
 {
 	char f;
 	int r = 0;
 	glMatrixMode(GL_MODELVIEW);
 	glPushMatrix();
 
-	set_color(WHITE); /* just the default */
+	set_color(color); 
 	/*glTranslated(x, y, 0);*/
 	glRasterPos2d(x, y);
 	while(*fmt) {
@@ -277,22 +283,6 @@ int vdraw_text(double x, double y, const char *fmt, va_list ap)
 			r += draw_string(s);
 			break;
 		}
-		case 'W'/*white*/:    set_color(WHITE);   break;
-		case 'R'/*red*/:      set_color(RED);     break;
-		case 'Y'/*yellow*/:   set_color(YELLOW);  break;
-		case 'G'/*green*/:    set_color(GREEN);   break;
-		case 'y'/*cyan*/:     set_color(CYAN);    break;
-		case 'B'/*blue*/:     set_color(BLUE);    break;
-		case 'M'/*magenta*/:  set_color(MAGENTA); break;
-		case 'N'/*brown*/:    set_color(BROWN);   break;
-		case 'K'/*black*/:    set_color(BLACK);   break;
-		case 'L'/*lookup*/: 
-		{
-			unsigned t = va_arg(ap, unsigned);
-			color_t  c = team_to_color(t);
-			set_color(c);
-			break;
-		}
 		case 0:
 		default:
 			error("invalid format specifier '%c'", f);
@@ -303,33 +293,33 @@ int vdraw_text(double x, double y, const char *fmt, va_list ap)
 	return r;
 }
 
-int draw_text(double x, double y, const char *fmt, ...)
+int draw_text(color_t color, double x, double y, const char *fmt, ...)
 {
 	int r;
 	va_list ap;
 	va_start(ap, fmt);
-	r = vdraw_text(x, y, fmt, ap);
+	r = vdraw_text(color, x, y, fmt, ap);
 	va_end(ap);
 	return r;
 }
 
-void fill_textbox(textbox_t *t, const char *fmt, ...)
+void fill_textbox(color_t color, textbox_t *t, const char *fmt, ...)
 {
 	double r;
 	va_list ap;
 	va_start(ap, fmt);
-	r = vdraw_text(t->x, t->y - t->height, fmt, ap);
+	r = vdraw_text(color, t->x, t->y - t->height, fmt, ap);
 	va_end(ap);
 	t->width = MAX(t->width, r); 
 	t->height += ((Ymax / window_height) * FONT_HEIGHT); /*correct?*/
 }
 
-void draw_textbox(textbox_t *t)
+void draw_textbox(color_t color, textbox_t *t)
 {
 	if(!(t->draw_box))
 		return;
 	/**@todo fix this */
-	draw_rectangle(t->x, t->y-t->height, t->width, t->height, YELLOW, true, 0.5);
+	draw_rectangle(t->x, t->y-t->height, t->width, t->height, color, true, 0.5);
 }
 
 double wrapx(double x)

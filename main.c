@@ -6,6 +6,7 @@
 #include "gladiator.h"
 #include "projectile.h"
 #include "vars.h"
+#include <ctype.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>
@@ -13,27 +14,25 @@
 #include <string.h>
 #include <GL/glut.h>
 
-/**@todo Turn into configurable items, along with object properties */
-#define TICK_MS                   (15)
-#define MAX_TICKS_PER_GENERATION  (500)
-#define WINDOW_X                  (60)
-#define WINDOW_Y                  (20)
 #define MAX_GLADIATORS            (3)
-#define DETECTION_LINES           (100)
 
-static bool redraw;
 static gladiator_t *gladiators[MAX_GLADIATORS];
 static projectile_t *projectiles[MAX_GLADIATORS];
 static prng_t *rstate;
 static unsigned generation = 0, tick = 0;
+static bool paused = false;
 
 static void keyboard_handler(unsigned char key, int x, int y)
 {
 	UNUSED(x);
 	UNUSED(y);
+	key = tolower(key);
 	switch(key) {
+	case 'p': paused = true;
+		  break;
+	case 'r': paused = false;
+		  break;
 	case 'q':
-	case 'Q':
 	case ESC:
 		exit(EXIT_SUCCESS);
 	default:
@@ -108,9 +107,9 @@ static bool detect_projectile_collision(gladiator_t *g)
 		double dy = g->y - projectiles[i]->y;
 		double distance = sqrt(dx * dx + dy * dy);
 		if(distance < (projectiles[i]->radius + g->radius)) {
-			g->health -= PROJECTILE_DAMAGE;
+			g->health -= projectile_damage;
 			gladiators[i]->hits++;
-			projectiles[i]->travelled += PROJECTILE_RANGE; /*removes projectile*/
+			projectiles[i]->travelled += projectile_range; /*removes projectile*/
 			return true;
 		}
 	}
@@ -144,6 +143,7 @@ static bool detect_line_circle_intersection(
 		double Fy = (t-dt)*Dy + Ay;
 		double Gx = (t+dt)*Dx + Ax;
 		double Gy = (t+dt)*Dy + Ay;
+		/*draw_line(Ax, Ay, atan2((Ay-By) , ((Ax-By) == 0 ? 0.0001 : (Ax-By))), 100, 0.5, MAGENTA);*/
 		draw_regular_polygon_filled(Fx, Fy, 0, 0.5, CIRCLE, CYAN);
 		draw_regular_polygon_filled(Gx, Gy, 0, 0.5, CIRCLE, BROWN);
 		return true;
@@ -178,7 +178,7 @@ static bool detect_enemy_gladiator(gladiator_t *k)
 			continue;
 		bool t = detect_circle_cone_collision(
 				k->x, k->y, k->orientation, k->field_of_view, 
-				DETECTION_LINES, k->radius*GLADIATOR_VISION,
+				detection_lines, k->radius * gladiator_vision,
 				c->x, c->y, c->radius);
 		if(t)
 			return true;
@@ -194,7 +194,7 @@ static bool detect_enemy_projectile(gladiator_t *k)
 			continue;
 		bool t = detect_circle_cone_collision(
 				k->x, k->y, k->orientation, k->field_of_view, 
-				DETECTION_LINES, k->radius*GLADIATOR_VISION,
+				detection_lines, k->radius*gladiator_vision,
 				c->x, c->y, c->radius);
 		if(t)
 			return true;
@@ -208,7 +208,6 @@ static void update_scene(void)
 	double inputs[GLADIATOR_IN_LAST_INPUT];
 	double outputs[GLADIATOR_OUT_LAST_OUTPUT];
 
-	draw_regular_polygon_line(Xmax/2, Ymax/2, PI/4, sqrt(Ymax*Ymax/2), SQUARE, 0.5, WHITE);
 
 	for(unsigned i = 0; i < MAX_GLADIATORS; i++)
 		detect_projectile_collision(gladiators[i]);
@@ -228,9 +227,11 @@ static void update_scene(void)
 		inputs[GLADIATOR_IN_VISION_ENEMY] = detect_enemy_gladiator(gladiators[i]);
 
 		gladiator_update(gladiators[i], inputs, outputs);
-		bool fire = outputs[GLADIATOR_OUT_FIRE] > GLADIATOR_FIRE_THRESHOLD;
-		if(fire)
+		bool fire = outputs[GLADIATOR_OUT_FIRE] > gladiator_fire_threshold;
+		if(fire && gladiators[i]->energy >= projectile_energy_cost) {
+			gladiators[i]->energy -= projectile_energy_cost;
 			projectile_fire(projectiles[i], gladiators[i]->x, gladiators[i]->y, gladiators[i]->orientation);
+		}
 		/**@todo collision detection */
 	}
 }
@@ -250,6 +251,7 @@ static void draw_debug_info()
 		fill_textbox(c, &t, "health      %f", gladiators[i]->health);
 		fill_textbox(c, &t, "angle       %f", gladiators[i]->orientation);
 		fill_textbox(c, &t, "hit         %u", gladiators[i]->hits);
+		fill_textbox(c, &t, "energy      %f", gladiators[i]->energy);
 		fill_textbox(c, &t, "fitness     %f", gladiator_fitness(gladiators[i]));
 	}
 
@@ -271,18 +273,21 @@ static void new_generation()
 			minf = fit;
 		}
 	}
-	gladiator_t *strongest = gladiator_copy(gladiators[max]);
-	gladiator_delete(gladiators[min]);
-	gladiators[min] = strongest;
+	if(minf < maxf) {
+		gladiator_t *strongest = gladiator_copy(gladiators[max]);
+		gladiator_delete(gladiators[min]);
+		gladiators[min] = strongest;
+	}
 
 	for(size_t i = 0; i < MAX_GLADIATORS; i++)
-		projectiles[i]->travelled += PROJECTILE_RANGE;
+		projectiles[i]->travelled += projectile_range;
 
 	for(size_t i = 0; i < MAX_GLADIATORS; i++)
 		gladiator_mutate(gladiators[i]);
 
 	for(size_t i = 0; i < MAX_GLADIATORS; i++) {
-		gladiators[i]->health = GLADIATOR_HEALTH;
+		gladiators[i]->health = gladiator_health;
+		gladiators[i]->energy = projectile_energy_cost;
 		gladiators[i]->hits = 0;
 		gladiators[i]->team = i;
 		gladiators[i]->x = prngf(rstate) * Xmax;
@@ -304,9 +309,10 @@ static void draw_scene(void)
 	}
 
 	draw_debug_info();
+	draw_regular_polygon_line(Xmax/2, Ymax/2, PI/4, sqrt(Ymax*Ymax/2), SQUARE, 0.5, WHITE);
 
-	if(next != tick) {
-		if(tick > MAX_TICKS_PER_GENERATION) {
+	if(next != tick && !paused) {
+		if(tick > max_ticks_per_generation) {
 			new_generation();
 			tick = 0;
 			generation++;
@@ -337,18 +343,20 @@ static void initialize_rendering(void)
 
 static void timer_callback(int value)
 {
-	redraw = 1;
-	tick++;
-	glutTimerFunc(TICK_MS, timer_callback, value);
+	if(!paused)
+		tick++;
+	glutTimerFunc(tick_ms, timer_callback, value);
 }
 
 int main(int argc, char **argv)
 {
 	/**@todo add command line arguments for debugging information*/
+	load_config();
+
 	initialize_arena();
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH );
-	glutInitWindowPosition(WINDOW_X, WINDOW_Y);
+	glutInitWindowPosition(window_x, window_y);
 	glutInitWindowSize(window_width, window_height);
 	glutCreateWindow("Gladiators");
 
@@ -358,7 +366,7 @@ int main(int argc, char **argv)
 	glutSpecialFunc(keyboard_special_handler);
 	glutReshapeFunc(resize_window);
 	glutDisplayFunc(draw_scene);
-	glutTimerFunc(TICK_MS, timer_callback, 0);
+	glutTimerFunc(tick_ms, timer_callback, 0);
 
 	glutMainLoop();
 	return 0;

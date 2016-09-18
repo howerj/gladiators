@@ -4,8 +4,6 @@
 #include <stdio.h>
 #include <stdbool.h>
 
-#define BRAIN_MAX_WEIGHT (2)
-
 struct brain_t;
 typedef struct brain_t brain_t;
 

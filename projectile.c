@@ -1,4 +1,5 @@
 #include "projectile.h"
+#include "vars.h"
 #include "util.h"
 #include <math.h>
 
@@ -9,26 +10,26 @@ projectile_t *projectile_new(unsigned team, double x, double y, double orientati
 	p->y = wrapy(y);
 	p->orientation = orientation;
 	p->team = team;
-	p->travelled = PROJECTILE_RANGE;
-	p->radius = PROJECTILE_SIZE;
+	p->travelled = projectile_range;
+	p->radius = projectile_size;
 	return p;
 }
 
 bool projectile_is_active(projectile_t *p)
 {
-	return p->travelled < PROJECTILE_RANGE;
+	return p->travelled < projectile_range;
 }
 
 void projectile_draw(projectile_t *p)
 {
 	if(!projectile_is_active(p))
 		return;
-	draw_regular_polygon_filled(p->x, p->y, p->orientation, PROJECTILE_SIZE, TRIANGLE, team_to_color(p->team));
+	draw_regular_polygon_filled(p->x, p->y, p->orientation, projectile_size, TRIANGLE, team_to_color(p->team));
 }
 
 void projectile_update(projectile_t *p)
 {
-	const double distance = PROJECTILE_DISTANCE_PER_TICK;
+	const double distance = projectile_distance_per_tick;
 	if(!projectile_is_active(p))
 		return;
 	p->x += distance * cos(p->orientation);
@@ -48,5 +49,4 @@ bool projectile_fire(projectile_t *p, double x, double y, double orientation)
 	p->orientation = orientation;
 	return true;
 }
-
 

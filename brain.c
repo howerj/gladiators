@@ -6,6 +6,10 @@
 #include <math.h>
 #include <assert.h>
 
+/**@todo make the layer system more generic, so more layers can be added at
+ * will
+ * @todo load and save brains to disk*/
+
 typedef struct {
 	size_t weight_count;
 	double bias;
@@ -24,29 +28,36 @@ struct brain_t {
 
 static prng_t *rstate;
 
-static double randomer(void)
+static double randomer(double original)
 {
 	if(!rstate) /**@warning not threadsafe*/
 		rstate = new_prng(13);
-	double r = prngf(rstate);
-	return r * BRAIN_MAX_WEIGHT;
+	double r = prngf(rstate) * brain_max_weight;
+	if(prngf(rstate) < 0.5)
+		r *= -1;
+	if(prngf(rstate) < 0.5)
+		r += original;
+	else
+		r -= original;
+	return r;
 }
 
 static neuron_t *neuron_new(bool rand, size_t length)
 {
 	neuron_t *n = allocate(sizeof(*n) + sizeof(n->weights[0])*length);
-	n->bias = rand ? randomer() : 1.0;
+	n->bias      = rand ? randomer(n->bias) : 1.0;
+	n->threshold = rand ? randomer(n->threshold) : 1.0;
 	n->weight_count = length;
 	for(size_t i = 0; i < length; i++)
-		n->weights[i] = rand ? randomer() : 1.0; 
+		n->weights[i] = rand ? randomer(n->threshold) : 1.0; 
 	return n;
 }
 
 static double mutation(double original, size_t length)
 {
 	double rate = prngf(rstate);
-	if(rate <= (MUTATION_RATE/length))
-		return randomer();
+	if(rate <= (mutation_rate/length))
+		return randomer(original);
 	return original;
 }
 

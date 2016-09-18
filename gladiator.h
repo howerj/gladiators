@@ -1,15 +1,6 @@
 #ifndef GLADIATOR_H
 #define GLADIATOR_H
 
-#define GLADIATOR_SIZE              (3)
-#define GLADIATOR_HEALTH            (2)
-#define GLADIATOR_FIRE_TIMEOUT      (15)
-#define GLADIATOR_BRAIN_LENGTH      (5)
-#define GLADIATOR_DISTANCE_PER_TICK (0.7)
-/**@note this could be added to a gladiators genetic code */
-#define GLADIATOR_FIRE_THRESHOLD    (0.75)
-#define GLADIATOR_VISION            (15)
-
 #include <stdbool.h>
 #include "brain.h"
 
@@ -21,6 +12,7 @@ typedef struct {
 	double radius;
 	unsigned team;
 	unsigned hits;
+	double energy;
 	bool enemy_gladiator_detected;
 	bool enemy_projectile_detected;
 	brain_t *brain;

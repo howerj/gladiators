@@ -4,3 +4,4 @@ core
 vgcore.*
 *.o
 *.d
+*.log

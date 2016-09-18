@@ -1,5 +1,5 @@
 LDFLAGS  = -lglut -lGL -lm
-CFLAGS   = -std=c99 -Wall -Wextra
+CFLAGS   = -std=c99 -Wall -Wextra -g
 
 # https://stackoverflow.com/questions/10520839/make-implicit-rules-and-header-files
 SOURCES := ${wildcard *.c}

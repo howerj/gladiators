@@ -15,10 +15,10 @@
 
 /**@todo Turn into configurable items, along with object properties */
 #define TICK_MS                   (15)
-#define MAX_TICKES_PER_GENERATION (4000)
+#define MAX_TICKS_PER_GENERATION  (4000)
 #define WINDOW_X                  (60)
 #define WINDOW_Y                  (20)
-#define MAX_GLADIATORS            (2)
+#define MAX_GLADIATORS            (3)
 
 static bool redraw;
 static gladiator_t *gladiators[MAX_GLADIATORS];
@@ -94,21 +94,124 @@ static double fps(void)
 	return fps;
 }
 
+static bool detect_projectile_collision(gladiator_t *g)
+{ /* see https://developer.mozilla.org/en-US/docs/Games/Techniques/2D_collision_detection */
+	for(size_t i = 0; i < MAX_GLADIATORS; i++) {
+		if(projectiles[i]->team == g->team)
+			continue;
+		double dx = g->x - projectiles[i]->x;
+		double dy = g->y - projectiles[i]->y;
+		double distance = sqrt(dx * dx + dy * dy);
+		if(distance < (projectiles[i]->radius + g->radius)) {
+			g->health -= PROJECTILE_DAMAGE;
+			gladiators[i]->hits++;
+			projectiles[i]->travelled += PROJECTILE_RANGE; /*removes projectile*/
+			return true;
+		}
+	}
+	return false;
+}
+
+static double square(double a)
+{
+	return a*a;
+}
+
+/* see:
+ * https://stackoverflow.com/questions/1073336/circle-line-segment-collision-detection-algorithm*/
+static bool detect_line_circle_intersection(
+		double Ax, double Ay,
+		double Bx, double By,
+		double Cx, double Cy, double Cradius)
+{
+	double lab = sqrt(square(Bx - Ax) + square(By - By));
+	double Dx  = (Bx - Ax) / lab;
+	double Dy  = (By - Ay) / lab;
+	double t   = Dx*(Cx-Ax) + Dy*(Cy-Ay);
+	double Ex  = t*Dx+Ax;
+	double Ey  = t*Dy+Ay;
+	double lec = sqrt(square(Ex-Cx)+square(Ey-Cy));
+
+	if(lec < Cradius) {
+		/*dt = sqrt(square(Cradius) - square(LEC))
+		double Fx = (t-dt)*Dx + Ax
+		double Fy = (t-dt)*Dy + Ay
+		double Gx = (t+dt)*Dx + Ax
+		double Gy = (t+dt)*Dy + Ay */
+		return true;
+	} else if(lec == Cradius) {
+		return true;
+	} else {
+		return false;
+	}
+}
+
+static bool detect_circle_cone_collision(
+		double kx, double ky, double korientation, double ksweep, double kres, double klen,
+		double cx, double cy, double cradius)
+{
+	for(double i = korientation - (ksweep/2); i < (korientation + ksweep/2); i+=kres) {
+		double bx = kx + (klen * cos(i)); /**@note does not handle wrapping */
+		double by = ky + (klen * sin(i));
+		bool d = detect_line_circle_intersection(kx, ky, bx, by, cx, cy, cradius);
+		if(d)
+			return true;
+	}
+
+	return false;
+}
+
+static bool detect_enemy_gladiator(gladiator_t *k)
+{
+	for(unsigned j = 0; j < MAX_GLADIATORS; j++) {
+		gladiator_t *c = gladiators[j];
+		if(k->team == c->team || c->health < 0)
+			continue;
+		bool t = detect_circle_cone_collision(
+				k->x, k->y, k->orientation, k->field_of_view, 
+				k->field_of_view/100, k->radius*GLADIATOR_VISION,
+				c->x, c->y, c->radius);
+		if(t)
+			return true;
+	}
+	return false;
+}
+
+static bool detect_enemy_projectile(gladiator_t *k)
+{
+	for(unsigned j = 0; j < MAX_GLADIATORS; j++) {
+		projectile_t *c = projectiles[j];
+		if(k->team == c->team)
+			continue;
+		bool t = detect_circle_cone_collision(
+				k->x, k->y, k->orientation, k->field_of_view, 
+				k->field_of_view/100, k->radius*GLADIATOR_VISION,
+				c->x, c->y, c->radius);
+		if(t)
+			return true;
+	}
+	return false;
+
+}
+
 static void update_scene(void)
 {
 	double inputs[GLADIATOR_IN_LAST_INPUT];
 	double outputs[GLADIATOR_OUT_LAST_OUTPUT];
-	for(unsigned i = 0; i < MAX_GLADIATORS; i++) {
+
+	for(unsigned i = 0; i < MAX_GLADIATORS; i++)
+		detect_projectile_collision(gladiators[i]);
+	for(unsigned i = 0; i < MAX_GLADIATORS; i++)
 		update_projectile(projectiles[i]);
 
+	for(unsigned i = 0; i < MAX_GLADIATORS; i++) {
 		memset(inputs,  0, sizeof(inputs));
 		memset(outputs, 0, sizeof(outputs));
 
 		inputs[GLADIATOR_IN_FIRED] = is_projectile_active(projectiles[i]);
 		inputs[GLADIATOR_IN_FIELD_OF_VIEW] = outputs[GLADIATOR_OUT_FIELD_OF_VIEW];
-		inputs[GLADIATOR_IN_VISION_PROJECTILE] = prngf(rstate);
-		inputs[GLADIATOR_IN_VISION_ENEMY] = prngf(rstate);
-;
+		inputs[GLADIATOR_IN_VISION_PROJECTILE] = detect_enemy_projectile(gladiators[i]);
+		inputs[GLADIATOR_IN_VISION_ENEMY] = detect_enemy_gladiator(gladiators[i]);
 
 		update_gladiator(gladiators[i], inputs, outputs);
 		bool fire = outputs[GLADIATOR_OUT_FIRE] > GLADIATOR_FIRE_THRESHOLD;

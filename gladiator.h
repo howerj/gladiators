@@ -2,12 +2,13 @@
 #define GLADIATOR_H
 
 #define GLADIATOR_SIZE              (3)
-#define GLADIATOR_HEALTH            (3)
+#define GLADIATOR_HEALTH            (2)
 #define GLADIATOR_FIRE_TIMEOUT      (15)
 #define GLADIATOR_BRAIN_LENGTH      (5)
 #define GLADIATOR_DISTANCE_PER_TICK (0.5)
 /**@note this could be added to a gladiators genetic code */
 #define GLADIATOR_FIRE_THRESHOLD    (0.8)
+#define GLADIATOR_VISION            (15)
 
 #include <stdbool.h>
 #include "util.h"
@@ -18,9 +19,11 @@ typedef struct {
 	double orientation;
 	double field_of_view;
 	double health;
+	double radius;
 	unsigned team;
-	unsigned kills;
-	bool fired;
+	unsigned hits;
+	bool enemy_gladiator_detected;
+	bool enemy_projectile_detected;
 	brain_t *brain;
 } gladiator_t;
 

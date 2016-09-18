@@ -11,6 +11,7 @@ projectile_t *new_projectile(unsigned team, double x, double y, double orientati
 	p->orientation = orientation;
 	p->team = team;
 	p->travelled = PROJECTILE_RANGE;
+	p->radius = PROJECTILE_SIZE;
 	return p;
 }
 

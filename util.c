@@ -66,7 +66,7 @@ void set_color(color_t color)
 	case BROWN:   glColor3f(0.35, 0.35, 0.0); break;
 	case BLACK:   glColor3f(0.0, 0.0, 0.0);   break;
 	default:
-		error("invalid color '%c'", color);
+		error("invalid color '%d'", color);
 	}
 }
 

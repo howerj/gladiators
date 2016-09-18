@@ -2,19 +2,18 @@
 #include "brain.h"
 #include "util.h"
 #include "color.h"
-#include "team.h"
 #include <stdlib.h>
 #include <stdbool.h>
 #include <assert.h>
 #include <math.h>
 
-void update_gladiator(gladiator_t *g, const double inputs[], double outputs[])
+void gladiator_update(gladiator_t *g, const double inputs[], double outputs[])
 {
 	if(g->health < 0)
 		return;
 	g->enemy_gladiator_detected  = inputs[GLADIATOR_IN_VISION_ENEMY] > 0.0;
 	g->enemy_projectile_detected = inputs[GLADIATOR_IN_VISION_PROJECTILE] > 0.0;
-	update_brain(g->brain, inputs, GLADIATOR_IN_LAST_INPUT, outputs, GLADIATOR_OUT_LAST_OUTPUT);
+	brain_update(g->brain, inputs, GLADIATOR_IN_LAST_INPUT, outputs, GLADIATOR_OUT_LAST_OUTPUT);
 	g->field_of_view = outputs[GLADIATOR_OUT_FIELD_OF_VIEW];
 	g->orientation  += outputs[GLADIATOR_OUT_TURN_LEFT];
 	g->orientation  -= outputs[GLADIATOR_OUT_TURN_RIGHT];
@@ -26,7 +25,7 @@ void update_gladiator(gladiator_t *g, const double inputs[], double outputs[])
 	g->y = wrapy(g->y);
 }
 
-void draw_gladiator(gladiator_t *g)
+void gladiator_draw(gladiator_t *g)
 {
 	color_t projectile = g->enemy_projectile_detected ? RED : GREEN;
 	draw_line(g->x, g->y, g->orientation, g->radius*2, g->radius/2, projectile);
@@ -39,7 +38,7 @@ void draw_gladiator(gladiator_t *g)
 	draw_regular_polygon(g->x, g->y, g->orientation, g->radius, PENTAGON, team_to_color(g->team));
 }
 
-gladiator_t *new_gladiator(prng_t *p, unsigned team, double x, double y, double orientation)
+gladiator_t *gladiator_new(unsigned team, double x, double y, double orientation)
 {
 	gladiator_t *g = allocate(sizeof(*g));
 	g->team = team;
@@ -49,13 +48,27 @@ gladiator_t *new_gladiator(prng_t *p, unsigned team, double x, double y, double 
 	g->field_of_view = PI / 3;
 	g->health = GLADIATOR_HEALTH;
 	g->radius = GLADIATOR_SIZE;
-	g->brain = new_brain(p, GLADIATOR_BRAIN_LENGTH);
+	g->brain = brain_new(GLADIATOR_BRAIN_LENGTH);
 	return g;
 }
 
-void delete_gladiator(gladiator_t *g)
+void gladiator_delete(gladiator_t *g)
 {
-	delete_brain(g->brain);
+	brain_delete(g->brain);
 	free(g);
+}
+
+
+void gladiator_mutate(gladiator_t *g)
+{
+	brain_mutate(g->brain);
+}
+
+double gladiator_fitness(gladiator_t *g)
+{
+	/**@todo think of a better fitness function*/
+	if(g->health < 0)
+		return -1;
+	return g->health * 1.5 + g->hits;
 }
 

@@ -70,6 +70,23 @@ void set_color(color_t color)
 	}
 }
 
+/**@warning not threadsafe, although of no real consequence*/
+static bool warned = false;
+
+color_t team_to_color(unsigned team)
+{
+	static const color_t colors[] = { RED, GREEN, YELLOW, CYAN, BLUE, MAGENTA };
+	if(team >= sizeof(colors)/sizeof(colors[0])) {
+		if(!warned) {
+			warning("gladiator: ran out of team colors %u");
+			warned = true;
+		}
+		return MAGENTA;
+	}
+	return colors[team];
+}
+
+
 void draw_line(double x, double y, double angle, double magnitude, double thickness, color_t color)
 {
 	glMatrixMode(GL_MODELVIEW);
@@ -220,7 +237,7 @@ int vdraw_text(double x, double y, const char *fmt, va_list ap)
 	glMatrixMode(GL_MODELVIEW);
 	glPushMatrix();
 
-	set_color(BLUE); /* just the default */
+	set_color(WHITE); /* just the default */
 	/*glTranslated(x, y, 0);*/
 	glRasterPos2d(x, y);
 	while(*fmt) {
@@ -258,6 +275,22 @@ int vdraw_text(double x, double y, const char *fmt, va_list ap)
 			char s[512] = {0};
 			sprintf(s, "%.4f", f);
 			r += draw_string(s);
+			break;
+		}
+		case 'W'/*white*/:    set_color(WHITE);   break;
+		case 'R'/*red*/:      set_color(RED);     break;
+		case 'Y'/*yellow*/:   set_color(YELLOW);  break;
+		case 'G'/*green*/:    set_color(GREEN);   break;
+		case 'y'/*cyan*/:     set_color(CYAN);    break;
+		case 'B'/*blue*/:     set_color(BLUE);    break;
+		case 'M'/*magenta*/:  set_color(MAGENTA); break;
+		case 'N'/*brown*/:    set_color(BROWN);   break;
+		case 'K'/*black*/:    set_color(BLACK);   break;
+		case 'L'/*lookup*/: 
+		{
+			unsigned t = va_arg(ap, unsigned);
+			color_t  c = team_to_color(t);
+			set_color(c);
 			break;
 		}
 		case 0:

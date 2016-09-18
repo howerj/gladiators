@@ -16,10 +16,11 @@ typedef struct {
 	unsigned team;
 } projectile_t;
 
-projectile_t *new_projectile(unsigned team, double x, double y, double orientation);
-void draw_projectile(projectile_t *p);
-void update_projectile(projectile_t *p);
-bool is_projectile_active(projectile_t *p);
-bool fire_projectile(projectile_t *p, double x, double y, double orientation);
+projectile_t *projectile_new(unsigned team, double x, double y, double orientation);
+void projectile_delete(projectile_t *p);
+void projectile_draw(projectile_t *p);
+void projectile_update(projectile_t *p);
+bool projectile_is_active(projectile_t *p);
+bool projectile_fire(projectile_t *p, double x, double y, double orientation);
 
 #endif

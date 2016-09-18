@@ -19,6 +19,7 @@
 #define WINDOW_X                  (60)
 #define WINDOW_Y                  (20)
 #define MAX_GLADIATORS            (3)
+#define DETECTION_LINES           (100)
 
 static bool redraw;
 static gladiator_t *gladiators[MAX_GLADIATORS];
@@ -94,10 +95,14 @@ static double fps(void)
 	return fps;
 }
 
+/**@warning if the gladiators or the projectiles are two fast this scheme will
+ * work only intermittently.
+ *
+ * See: https://developer.mozilla.org/en-US/docs/Games/Techniques/2D_collision_detection */
 static bool detect_projectile_collision(gladiator_t *g)
-{ /* see https://developer.mozilla.org/en-US/docs/Games/Techniques/2D_collision_detection */
+{ 
 	for(size_t i = 0; i < MAX_GLADIATORS; i++) {
-		if(projectiles[i]->team == g->team)
+		if(projectiles[i]->team == g->team || g->health < 0)
 			continue;
 		double dx = g->x - projectiles[i]->x;
 		double dy = g->y - projectiles[i]->y;
@@ -112,12 +117,13 @@ static bool detect_projectile_collision(gladiator_t *g)
 	return false;
 }
 
-static double square(double a)
+static inline double square(double a)
 {
 	return a*a;
 }
 
-/* see:
+/* @todo move to separate file
+ * see:
  * https://stackoverflow.com/questions/1073336/circle-line-segment-collision-detection-algorithm*/
 static bool detect_line_circle_intersection(
 		double Ax, double Ay,
@@ -127,17 +133,19 @@ static bool detect_line_circle_intersection(
 	double lab = sqrt(square(Bx - Ax) + square(By - By));
 	double Dx  = (Bx - Ax) / lab;
 	double Dy  = (By - Ay) / lab;
-	double t   = Dx*(Cx-Ax) + Dy*(Cy-Ay);
-	double Ex  = t*Dx+Ax;
-	double Ey  = t*Dy+Ay;
-	double lec = sqrt(square(Ex-Cx)+square(Ey-Cy));
+	double t   = Dx * (Cx - Ax) + Dy * (Cy - Ay);
+	double Ex  = t * Dx + Ax;
+	double Ey  = t * Dy + Ay;
+	double lec = sqrt(square(Ex - Cx) + square(Ey - Cy));
 
 	if(lec < Cradius) {
-		/*dt = sqrt(square(Cradius) - square(LEC))
-		double Fx = (t-dt)*Dx + Ax
-		double Fy = (t-dt)*Dy + Ay
-		double Gx = (t+dt)*Dx + Ax
-		double Gy = (t+dt)*Dy + Ay */
+		double dt = sqrt(square(Cradius) - square(lec));
+		double Fx = (t-dt)*Dx + Ax;
+		double Fy = (t-dt)*Dy + Ay;
+		double Gx = (t+dt)*Dx + Ax;
+		double Gy = (t+dt)*Dy + Ay;
+		draw_regular_polygon(Fx, Fy, 0, 0.5, CIRCLE, CYAN);
+		draw_regular_polygon(Gx, Gy, 0, 0.5, CIRCLE, BROWN);
 		return true;
 	} else if(lec == Cradius) {
 		return true;
@@ -147,29 +155,30 @@ static bool detect_line_circle_intersection(
 }
 
 static bool detect_circle_cone_collision(
-		double kx, double ky, double korientation, double ksweep, double kres, double klen,
+		double kx, double ky, double korientation, double ksweep, unsigned lines, double klen,
 		double cx, double cy, double cradius)
 {
-	for(double i = korientation - (ksweep/2); i < (korientation + ksweep/2); i+=kres) {
+	unsigned j = 0;
+	for(double i = korientation - (ksweep/2); j < lines; i += (ksweep/lines), j++) {
 		double bx = kx + (klen * cos(i)); /**@note does not handle wrapping */
 		double by = ky + (klen * sin(i));
+		/*draw_line(bx, by, i, 4, 0.5, WHITE);*/
 		bool d = detect_line_circle_intersection(kx, ky, bx, by, cx, cy, cradius);
 		if(d)
 			return true;
 	}
-
 	return false;
 }
 
 static bool detect_enemy_gladiator(gladiator_t *k)
 {
-	for(unsigned j = 0; j < MAX_GLADIATORS; j++) {
-		gladiator_t *c = gladiators[j];
+	for(size_t i = 0; i < MAX_GLADIATORS; i++) {
+		gladiator_t *c = gladiators[i];
 		if(k->team == c->team || c->health < 0)
 			continue;
 		bool t = detect_circle_cone_collision(
 				k->x, k->y, k->orientation, k->field_of_view, 
-				k->field_of_view/100, k->radius*GLADIATOR_VISION,
+				DETECTION_LINES, k->radius*GLADIATOR_VISION,
 				c->x, c->y, c->radius);
 		if(t)
 			return true;
@@ -185,7 +194,7 @@ static bool detect_enemy_projectile(gladiator_t *k)
 			continue;
 		bool t = detect_circle_cone_collision(
 				k->x, k->y, k->orientation, k->field_of_view, 
-				k->field_of_view/100, k->radius*GLADIATOR_VISION,
+				DETECTION_LINES, k->radius*GLADIATOR_VISION,
 				c->x, c->y, c->radius);
 		if(t)
 			return true;
@@ -202,21 +211,21 @@ static void update_scene(void)
 	for(unsigned i = 0; i < MAX_GLADIATORS; i++)
 		detect_projectile_collision(gladiators[i]);
 	for(unsigned i = 0; i < MAX_GLADIATORS; i++)
-		update_projectile(projectiles[i]);
+		projectile_update(projectiles[i]);
 
 	for(unsigned i = 0; i < MAX_GLADIATORS; i++) {
 		memset(inputs,  0, sizeof(inputs));
 		memset(outputs, 0, sizeof(outputs));
 
-		inputs[GLADIATOR_IN_FIRED] = is_projectile_active(projectiles[i]);
+		inputs[GLADIATOR_IN_FIRED] = projectile_is_active(projectiles[i]);
 		inputs[GLADIATOR_IN_FIELD_OF_VIEW] = outputs[GLADIATOR_OUT_FIELD_OF_VIEW];
 		inputs[GLADIATOR_IN_VISION_PROJECTILE] = detect_enemy_projectile(gladiators[i]);
 		inputs[GLADIATOR_IN_VISION_ENEMY] = detect_enemy_gladiator(gladiators[i]);
 
-		update_gladiator(gladiators[i], inputs, outputs);
+		gladiator_update(gladiators[i], inputs, outputs);
 		bool fire = outputs[GLADIATOR_OUT_FIRE] > GLADIATOR_FIRE_THRESHOLD;
 		if(fire)
-			fire_projectile(projectiles[i], gladiators[i]->x, gladiators[i]->y, gladiators[i]->orientation);
+			projectile_fire(projectiles[i], gladiators[i]->x, gladiators[i]->y, gladiators[i]->orientation);
 		/**@todo collision detection */
 	}
 }
@@ -229,6 +238,15 @@ static void draw_debug_info()
 	fill_textbox(&t, "generation: %u", generation);
 	fill_textbox(&t, "tick:       %u", tick);
 	fill_textbox(&t, "fps:        %f", fps());
+
+	for(size_t i = 0; i < MAX_GLADIATORS; i++) {
+		fill_textbox(&t, "gladiator:  %u", gladiators[i]->team, gladiators[i]->team);
+		fill_textbox(&t, "health      %f", gladiators[i]->health);
+		fill_textbox(&t, "angle       %f", gladiators[i]->orientation);
+		fill_textbox(&t, "hit         %u", gladiators[i]->hits);
+		fill_textbox(&t, "fitness     %f", gladiator_fitness(gladiators[i]));
+	}
+
 	draw_textbox(&t);
 }
 
@@ -238,9 +256,9 @@ static void draw_scene(void)
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	for(unsigned i = 0; i < MAX_GLADIATORS; i++) {
-		draw_gladiator(gladiators[i]);
-		draw_projectile(projectiles[i]);
+	for(size_t i = 0; i < MAX_GLADIATORS; i++) {
+		gladiator_draw(gladiators[i]);
+		projectile_draw(projectiles[i]);
 	}
 
 	draw_debug_info();
@@ -258,9 +276,9 @@ static void draw_scene(void)
 static void initialize_arena()
 {
 	rstate = new_prng(7);
-	for(unsigned i = 0; i < MAX_GLADIATORS; i++) {
-		gladiators[i] = new_gladiator(rstate, i, prngf(rstate)*Xmax, prngf(rstate)*Ymax, prngf(rstate)*2*PI);
-		projectiles[i] = new_projectile(i, 0, 0, 0);
+	for(size_t i = 0; i < MAX_GLADIATORS; i++) {
+		gladiators[i] = gladiator_new(i, prngf(rstate)*Xmax, prngf(rstate)*Ymax, prngf(rstate)*2*PI);
+		projectiles[i] = projectile_new(i, 0, 0, 0);
 	}
 }
 

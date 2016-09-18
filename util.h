@@ -63,4 +63,6 @@ double wrapx(double x);
 double wrapy(double y);
 double wraprad(double rad);
 
+color_t team_to_color(unsigned team);
+
 #endif

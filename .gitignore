@@ -1,4 +1,6 @@
 gladiator
 arena
+core
+vgcore.*
 *.o
 *.d

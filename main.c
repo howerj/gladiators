@@ -4,21 +4,25 @@
 
 #include "util.h"
 #include "gladiator.h"
+#include "projectile.h"
 #include "vars.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>
 #include <math.h>
+#include <string.h>
 #include <GL/glut.h>
 
 /**@todo Turn into configurable items, along with object properties */
-#define TICK_MS        (15)
-#define WINDOW_X       (60)
-#define WINDOW_Y       (20)
-#define MAX_GLADIATORS (2)
+#define TICK_MS                   (15)
+#define MAX_TICKES_PER_GENERATION (4000)
+#define WINDOW_X                  (60)
+#define WINDOW_Y                  (20)
+#define MAX_GLADIATORS            (2)
 
 static bool redraw;
 static gladiator_t *gladiators[MAX_GLADIATORS];
+static projectile_t *projectiles[MAX_GLADIATORS];
 static prng_t *rstate;
 static unsigned generation = 0, tick = 0;
 
@@ -90,12 +94,35 @@ static double fps(void)
 	return fps;
 }
 
+static void update_scene(void)
+{
+	double inputs[GLADIATOR_IN_LAST_INPUT];
+	double outputs[GLADIATOR_OUT_LAST_OUTPUT];
+	for(unsigned i = 0; i < MAX_GLADIATORS; i++) {
+		update_projectile(projectiles[i]);
+
+		memset(inputs,  0, sizeof(inputs));
+		memset(outputs, 0, sizeof(outputs));
+
+		inputs[GLADIATOR_IN_FIRED] = is_projectile_active(projectiles[i]);
+		inputs[GLADIATOR_IN_FIELD_OF_VIEW] = outputs[GLADIATOR_OUT_FIELD_OF_VIEW];
+		inputs[GLADIATOR_IN_VISION_PROJECTILE] = prngf(rstate);
+		inputs[GLADIATOR_IN_VISION_ENEMY] = prngf(rstate);
+;
+
+		update_gladiator(gladiators[i], inputs, outputs);
+		bool fire = outputs[GLADIATOR_OUT_FIRE] > GLADIATOR_FIRE_THRESHOLD;
+		if(fire)
+			fire_projectile(projectiles[i], gladiators[i]->x, gladiators[i]->y, gladiators[i]->orientation);
+		/**@todo collision detection */
+	}
+}
+
 static void draw_debug_info()
 {
 	if(!debug_mode)
 		return;
-	/**@todo find out why -20 is required, it should be 0 */
-	textbox_t t = { .x = -20, .y = Ymax - Ymax/40, .draw_box = false };
+	textbox_t t = { .x = 0, .y = Ymax - Ymax/40, .draw_box = false };
 	fill_textbox(&t, "generation: %u", generation);
 	fill_textbox(&t, "tick:       %u", tick);
 	fill_textbox(&t, "fps:        %f", fps());
@@ -104,12 +131,21 @@ static void draw_debug_info()
 
 static void draw_scene(void)
 {
+	static unsigned next = 0;
+
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	for(unsigned i = 0; i < MAX_GLADIATORS; i++)
+	for(unsigned i = 0; i < MAX_GLADIATORS; i++) {
 		draw_gladiator(gladiators[i]);
+		draw_projectile(projectiles[i]);
+	}
 
 	draw_debug_info();
+
+	if(next != tick) {
+		next = tick;
+		update_scene();
+	}
 
 	glFlush();
 	glutSwapBuffers();
@@ -119,8 +155,10 @@ static void draw_scene(void)
 static void initialize_arena()
 {
 	rstate = new_prng(7);
-	for(unsigned i = 0; i < MAX_GLADIATORS; i++)
-		gladiators[i] = new_gladiator(i, prngf(rstate)*Xmax, prngf(rstate)*Ymax, prngf(rstate)*2*PI);
+	for(unsigned i = 0; i < MAX_GLADIATORS; i++) {
+		gladiators[i] = new_gladiator(rstate, i, prngf(rstate)*Xmax, prngf(rstate)*Ymax, prngf(rstate)*2*PI);
+		projectiles[i] = new_projectile(i, 0, 0, 0);
+	}
 }
 
 static void initialize_rendering(void)

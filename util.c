@@ -64,7 +64,7 @@ void set_color(color_t color)
 	case BLUE:    glColor3f(0.0, 0.0, 0.8);   break;
 	case MAGENTA: glColor3f(0.8, 0.0, 0.8);   break;
 	case BROWN:   glColor3f(0.35, 0.35, 0.0); break;
-	case C2:      glColor3f(0.0, 0.0, 0.0);   break;
+	case BLACK:   glColor3f(0.0, 0.0, 0.0);   break;
 	default:
 		error("invalid color '%c'", color);
 	}
@@ -297,5 +297,32 @@ void draw_textbox(textbox_t *t)
 		return;
 	/**@todo fix this */
 	draw_rectangle(t->x, t->y-t->height, t->width, t->height, YELLOW, true, 0.5);
+}
+
+double wrapx(double x)
+{
+	if(x > Xmax)
+		x = Xmin;
+	if(x < Xmin)
+		x = Xmax;
+	return x;
+}
+
+double wrapy(double y)
+{
+	if(y > Ymax)
+		y = Ymin;
+	if(y < Ymin)
+		y = Ymax;
+	return y;
+}
+
+double wraprad(double rad)
+{
+	if(rad > 2*PI)
+		rad = 0.0;
+	if(rad < 0)
+		rad = 2*PI;
+	return rad;
 }
 

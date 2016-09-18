@@ -59,4 +59,8 @@ void draw_textbox(textbox_t *t);
 
 void draw_rectangle(double x, double y, double width, double height, color_t color, bool lines, double thickness);
 
+double wrapx(double x);
+double wrapy(double y);
+double wraprad(double rad);
+
 #endif

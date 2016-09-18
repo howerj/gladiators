@@ -12,7 +12,7 @@ typedef enum {
 	BLUE     =  'b',
 	MAGENTA  =  'm',
 	BROWN    =  'B',
-	C2       =  '*',
+	BLACK    =  '*',
 	INVALID_COLOR
 } colors_e;
 

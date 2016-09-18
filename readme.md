@@ -41,6 +41,10 @@ This project will be based on this one:
 * <https://www.youtube.com/watch?v=u2t77mQmJiY>
 * <http://doublezoom.free.fr/programmation/AG_Exemple_Fighting.php>
 
+For collision detection
+
+* <http://elancev.name/oliver/2D%20polygon.htm>
+
 ### For future use
 
 * <https://artgrammer.blogspot.co.uk/2011/05/drawing-nearly-perfect-2d-line-segments.html>

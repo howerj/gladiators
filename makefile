@@ -21,6 +21,9 @@ ${TARGET}: ${OBJECTS}
 run: ${TARGET}
 	./${TARGET}
 
+gladiator.conf: ${TARGET}
+	./${TARGET} -s
+
 -include ${DEPS}
 
 clean:

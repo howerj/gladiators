@@ -5,16 +5,18 @@
 #include "brain.h"
 
 typedef struct {
-	double x, y;
-	double orientation;
-	double field_of_view;
-	double health;
-	double radius;
-	unsigned team;
-	unsigned hits;
-	double energy;
+	double x, y; /*position of gladiator*/
+	double orientation; /*direction of gladiator*/
+	double field_of_view; /*angle of gladiators eye*/
+	double health; /*health of this gladiator*/
+	double radius; /*size of this gladiator*/
+	unsigned team; /*this gladiators team*/
+	unsigned hits; /*hits the gladiator scored on other gladiators*/
+	double energy; /*energy of gladiator, needed to fire weapon*/
 	bool enemy_gladiator_detected;
 	bool enemy_projectile_detected;
+	double state1; /*internal state, experimental*/
+	unsigned rank; /*when the gladiator died, if it did*/
 	brain_t *brain;
 } gladiator_t;
 
@@ -23,6 +25,10 @@ typedef enum {
 	GLADIATOR_IN_VISION_PROJECTILE,
 	GLADIATOR_IN_FIRED,
 	GLADIATOR_IN_FIELD_OF_VIEW,
+	GLADIATOR_IN_COLLISION_WALL,
+	GLADIATOR_IN_COLLISION_ENEMY,
+	GLADIATOR_IN_STATE1,
+	GLADIATOR_IN_RANDOM,
 	GLADIATOR_IN_LAST_INPUT
 } gladiator_input_e;
 
@@ -31,7 +37,9 @@ typedef enum {
 	GLADIATOR_OUT_TURN_RIGHT,
 	GLADIATOR_OUT_MOVE_FORWARD,
 	GLADIATOR_OUT_FIRE,
-	GLADIATOR_OUT_FIELD_OF_VIEW,
+	GLADIATOR_OUT_FIELD_OF_VIEW_OPEN,
+	GLADIATOR_OUT_FIELD_OF_VIEW_CLOSE,
+	GLADIATOR_OUT_STATE1,
 	GLADIATOR_OUT_LAST_OUTPUT
 } gladiator_output_e;
 
@@ -42,5 +50,6 @@ void gladiator_update(gladiator_t *g, const double inputs[], double outputs[]);
 void gladiator_delete(gladiator_t *g);
 double gladiator_fitness(gladiator_t *g);
 void gladiator_mutate(gladiator_t *g);
+bool gladiator_is_dead(gladiator_t *g);
 
 #endif

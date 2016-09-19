@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-static const char config_file[] = "config.txt";
+const char *default_config_file = "gladiator.conf";
 
 #define X(TYPE, NAME, VALUE) TYPE NAME = VALUE;
 CONFIG_X_MACRO
@@ -24,6 +24,11 @@ CONFIG_X_MACRO
 	{ end_e, NULL, NULL }
 };
 
+bool verbose(verbosity_t v)
+{
+	return verbosity >= v;
+}
+
 size_t find_config_item(const char* item)
 {
 	size_t i;
@@ -36,9 +41,9 @@ size_t find_config_item(const char* item)
 
 bool load_config(void)
 {
-	FILE *in = fopen(config_file, "rb");
+	FILE *in = fopen(default_config_file, "rb");
 	if(!in) {
-		fprintf(stderr, "configuration file '%s' failed to load\n", config_file);
+		fprintf(stderr, "configuration file '%s' failed to load\n", default_config_file);
 		return false;
 	}
 	char item[512] = { 0 };
@@ -71,9 +76,9 @@ end:
 
 bool save_config(void)
 {
-	FILE *out = fopen(config_file, "wb");
+	FILE *out = fopen(default_config_file, "wb");
 	if(!out) {
-		fprintf(stderr, "configuration file '%s' failed to save\n", config_file);
+		fprintf(stderr, "configuration file '%s' failed to save\n", default_config_file);
 		return false;
 	}
 	for(size_t i = 0; db[i].type != end_e; i++) {

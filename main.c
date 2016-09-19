@@ -1,6 +1,8 @@
 /** @file gladiator.c
  *  @brief Using genetic algorithms to select a gladiator controlled by a
- *  neural network. */
+ *  neural network. 
+ *
+ *  @todo make a "headless" mode that does not use the GUI */
 
 #include "util.h"
 #include "gladiator.h"
@@ -14,13 +16,12 @@
 #include <string.h>
 #include <GL/glut.h>
 
-#define MAX_GLADIATORS            (5)
-
-static gladiator_t *gladiators[MAX_GLADIATORS];
-static projectile_t *projectiles[MAX_GLADIATORS];
+static gladiator_t **gladiators;
+static projectile_t **projectiles;
 static prng_t *rstate;
 static unsigned generation = 0, tick = 0;
 static bool paused = false;
+static unsigned alive;
 
 static void keyboard_handler(unsigned char key, int x, int y)
 {
@@ -94,14 +95,14 @@ static double fps(void)
 	return fps;
 }
 
-/**@warning if the gladiators or the projectiles are two fast this scheme will
+/**@warning if the gladiators or the projectiles are too fast this scheme will
  * work only intermittently.
  *
  * See: https://developer.mozilla.org/en-US/docs/Games/Techniques/2D_collision_detection */
 static bool detect_projectile_collision(gladiator_t *g)
 { 
-	for(size_t i = 0; i < MAX_GLADIATORS; i++) {
-		if((projectiles[i]->team == g->team) || (g->health < 0) || !projectile_is_active(projectiles[i]))
+	for(size_t i = 0; i < max_gladiators; i++) {
+		if((projectiles[i]->team == g->team) || gladiator_is_dead(g) || !projectile_is_active(projectiles[i]))
 			continue;
 		double dx = g->x - projectiles[i]->x;
 		double dy = g->y - projectiles[i]->y;
@@ -109,7 +110,28 @@ static bool detect_projectile_collision(gladiator_t *g)
 		if(distance < (projectiles[i]->radius + g->radius)) {
 			g->health -= projectile_damage;
 			gladiators[i]->hits++;
-			projectiles[i]->travelled += projectile_range; /*removes projectile*/
+			if(gladiator_is_dead(gladiators[i])) {
+				g->rank = alive--;
+			}
+			projectile_remove(projectiles[i]);
+			return true;
+		}
+	}
+	return false;
+}
+
+/**@warning same problems apply as to detect_projectile_collision*/
+static bool detect_gladiator_collision(gladiator_t *g)
+{ 
+	for(size_t i = 0; i < max_gladiators; i++) {
+		if((gladiators[i]->team == g->team) || gladiator_is_dead(gladiators[i]))
+			continue;
+		double dx = g->x - gladiators[i]->x;
+		double dy = g->y - gladiators[i]->y;
+		double distance = sqrt(dx * dx + dy * dy);
+		if(distance < (gladiators[i]->radius + g->radius)) {
+			if(verbose(NOTE))
+				draw_regular_polygon_filled(g->x, g->y, 0, gladiator_size, CIRCLE, RED);
 			return true;
 		}
 	}
@@ -173,7 +195,7 @@ static bool detect_circle_cone_collision(
 
 static bool detect_enemy_gladiator(gladiator_t *k)
 {
-	for(size_t i = 0; i < MAX_GLADIATORS; i++) {
+	for(size_t i = 0; i < max_gladiators; i++) {
 		gladiator_t *c = gladiators[i];
 		if((k->team == c->team) || (c->health < 0))
 			continue;
@@ -189,7 +211,7 @@ static bool detect_enemy_gladiator(gladiator_t *k)
 
 static bool detect_enemy_projectile(gladiator_t *k)
 {
-	for(unsigned j = 0; j < MAX_GLADIATORS; j++) {
+	for(unsigned j = 0; j < max_gladiators; j++) {
 		projectile_t *c = projectiles[j];
 		if(k->team == c->team)
 			continue;
@@ -204,56 +226,86 @@ static bool detect_enemy_projectile(gladiator_t *k)
 
 }
 
+static void update_gladiator_inputs(gladiator_t *g, size_t i, double inputs[])
+{
+	/**@note the order of events really matters, it might be worth
+	 * moving them around*/
+	inputs[GLADIATOR_IN_FIRED] = projectile_is_active(projectiles[i]);
+	inputs[GLADIATOR_IN_FIELD_OF_VIEW] = g->field_of_view;
+	inputs[GLADIATOR_IN_VISION_PROJECTILE] = detect_enemy_projectile(g);
+	inputs[GLADIATOR_IN_VISION_ENEMY] = detect_enemy_gladiator(g);
+	inputs[GLADIATOR_IN_RANDOM]  = prngf(rstate);
+	inputs[GLADIATOR_IN_STATE1]  = g->state1;
+	inputs[GLADIATOR_IN_COLLISION_ENEMY] = detect_gladiator_collision(g);
+
+	double cval = 0.0;
+	cval = g->x == Xmin ? -0.5 : cval;
+	cval = g->x == Xmax ? -1.0 : cval;
+	cval = g->y == Ymin ? +0.5 : cval;
+	cval = g->y == Ymax ? +1.0 : cval;
+	if(cval != 0 && verbose(NOTE))
+		draw_regular_polygon_filled(g->x, g->y, 0, gladiator_size, CIRCLE, WHITE);
+
+	inputs[GLADIATOR_IN_COLLISION_WALL] = cval;
+}
+
+static void update_gladiator_outputs(gladiator_t *g, size_t i, double outputs[])
+{
+	/*most outputs are handled in gladiator update*/
+	bool fire = outputs[GLADIATOR_OUT_FIRE] > gladiator_fire_threshold;
+	if(fire && g->energy >= projectile_energy_cost) {
+		g->energy -= projectile_energy_cost;
+		projectile_fire(projectiles[i], g->x, g->y, g->orientation);
+	}
+}
+
 static void update_scene(void)
 {
 	double inputs[GLADIATOR_IN_LAST_INPUT];
 	double outputs[GLADIATOR_OUT_LAST_OUTPUT];
 
 
-	for(unsigned i = 0; i < MAX_GLADIATORS; i++)
+	for(unsigned i = 0; i < max_gladiators; i++)
 		detect_projectile_collision(gladiators[i]);
-	for(unsigned i = 0; i < MAX_GLADIATORS; i++)
+	for(unsigned i = 0; i < max_gladiators; i++)
 		projectile_update(projectiles[i]);
 
-	for(unsigned i = 0; i < MAX_GLADIATORS; i++) {
-		if(gladiators[i]->health < 0)
+	for(unsigned i = 0; i < max_gladiators; i++) {
+		gladiator_t *g = gladiators[i];
+		if(gladiator_is_dead(g))
 			continue;
 
 		memset(inputs,  0, sizeof(inputs));
 		memset(outputs, 0, sizeof(outputs));
 
-		inputs[GLADIATOR_IN_FIRED] = projectile_is_active(projectiles[i]);
-		inputs[GLADIATOR_IN_FIELD_OF_VIEW] = outputs[GLADIATOR_OUT_FIELD_OF_VIEW];
-		inputs[GLADIATOR_IN_VISION_PROJECTILE] = detect_enemy_projectile(gladiators[i]);
-		inputs[GLADIATOR_IN_VISION_ENEMY] = detect_enemy_gladiator(gladiators[i]);
-
-		gladiator_update(gladiators[i], inputs, outputs);
-		bool fire = outputs[GLADIATOR_OUT_FIRE] > gladiator_fire_threshold;
-		if(fire && gladiators[i]->energy >= projectile_energy_cost) {
-			gladiators[i]->energy -= projectile_energy_cost;
-			projectile_fire(projectiles[i], gladiators[i]->x, gladiators[i]->y, gladiators[i]->orientation);
-		}
-		/**@todo collision detection */
+		update_gladiator_inputs(g, i, inputs);
+		gladiator_update(g, inputs, outputs);
+		update_gladiator_outputs(g, i, outputs);
 	}
 }
 
 static void draw_debug_info()
 {
-	if(!debug_mode)
+	if(!verbose(NOTE))
 		return;
 	textbox_t t = { .x = Xmin + Xmax/40, .y = Ymax - Ymax/40, .draw_box = false };
 	fill_textbox(WHITE, &t, "generation: %u", generation);
 	fill_textbox(WHITE, &t, "tick:       %u", tick);
 	fill_textbox(WHITE, &t, "fps:        %f", fps());
+	fill_textbox(WHITE, &t, "alive:      %u/%u", alive, max_gladiators);
+	if(verbose(DEBUG))
+		fill_textbox(WHITE, &t, "prng:       %f", prngf(rstate));
 
-	for(size_t i = 0; i < MAX_GLADIATORS; i++) {
-		color_t c = team_to_color(gladiators[i]->team);
-		fill_textbox(c, &t, "gladiator:  %u", gladiators[i]->team); 
-		fill_textbox(c, &t, "health      %f", gladiators[i]->health);
-		fill_textbox(c, &t, "angle       %f", gladiators[i]->orientation);
-		fill_textbox(c, &t, "hit         %u", gladiators[i]->hits);
-		fill_textbox(c, &t, "energy      %f", gladiators[i]->energy);
-		fill_textbox(c, &t, "fitness     %f", gladiator_fitness(gladiators[i]));
+	for(size_t i = 0; i < max_gladiators; i++) {
+		gladiator_t *g = gladiators[i];
+		color_t c = team_to_color(g->team);
+		fill_textbox(c, &t, "gladiator:  %u", g->team); 
+		fill_textbox(c, &t, "health      %f", g->health);
+		fill_textbox(c, &t, "angle       %f", g->orientation);
+		fill_textbox(c, &t, "hit         %u", g->hits);
+		fill_textbox(c, &t, "energy      %f", g->energy);
+		fill_textbox(c, &t, "fitness     %f", gladiator_fitness(g));
+		fill_textbox(c, &t, "state1      %f", g->state1);
 	}
 
 	draw_textbox(GREEN, &t);
@@ -263,7 +315,8 @@ static void new_generation()
 {
 	size_t max = 0, min = 0;
 	double maxf = 0, minf = 0;
-	for(size_t i = 0; i < MAX_GLADIATORS; i++) {
+	alive = max_gladiators;
+	for(size_t i = 0; i < max_gladiators; i++) {
 		double fit = gladiator_fitness(gladiators[i]);
 		if(fit > maxf) {
 			max = i;
@@ -280,13 +333,13 @@ static void new_generation()
 		gladiators[min] = strongest;
 	}
 
-	for(size_t i = 0; i < MAX_GLADIATORS; i++)
-		projectiles[i]->travelled += projectile_range;
+	for(size_t i = 0; i < max_gladiators; i++)
+		projectile_remove(projectiles[i]);
 
-	for(size_t i = 0; i < MAX_GLADIATORS; i++)
+	for(size_t i = 0; i < max_gladiators; i++)
 		gladiator_mutate(gladiators[i]);
 
-	for(size_t i = 0; i < MAX_GLADIATORS; i++) {
+	for(size_t i = 0; i < max_gladiators; i++) {
 		gladiators[i]->health = gladiator_health;
 		gladiators[i]->energy = projectile_energy_cost;
 		gladiators[i]->hits = 0;
@@ -304,7 +357,7 @@ static void draw_scene(void)
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	for(size_t i = 0; i < MAX_GLADIATORS; i++) {
+	for(size_t i = 0; i < max_gladiators; i++) {
 		gladiator_draw(gladiators[i]);
 		projectile_draw(projectiles[i]);
 	}
@@ -330,7 +383,10 @@ static void draw_scene(void)
 static void initialize_arena()
 {
 	rstate = new_prng(7);
-	for(size_t i = 0; i < MAX_GLADIATORS; i++) {
+	alive = max_gladiators;
+	gladiators = allocate(sizeof(gladiators[0]) * max_gladiators);
+	projectiles = allocate(sizeof(projectiles[0]) * max_gladiators);
+	for(size_t i = 0; i < max_gladiators; i++) {
 		gladiators[i] = gladiator_new(i, prngf(rstate)*Xmax, prngf(rstate)*Ymax, prngf(rstate)*2*PI);
 		projectiles[i] = projectile_new(i, 0, 0, 0);
 	}
@@ -349,13 +405,66 @@ static void timer_callback(int value)
 	glutTimerFunc(tick_ms, timer_callback, value);
 }
 
+void usage(const char *arg_0)
+{
+	fprintf(stderr, "usage: %s [-v] [-h] [-]\n", arg_0);
+}
+
+void help(void)
+{
+	static const char help[] = "\
+gladiators: fight and evolve a neural network controlled gladiator\n\
+\n\
+This is a simple toy program designed to display a series of 'gladiators'\n\
+that can fire at and evade each other.\n\
+\n\
+\t-   stop processing options\n\
+\t-v  increase verbosity level\n\
+\t-s  save configuration file and exit\n\
+\t-h  print this help message and exit\n\
+\n\
+When running there are a few commands that can issued:\n\
+\n\
+\t'p' pause the simulation\n\
+\t'r' resume the simulation after it is paused\n\
+\t'q' quit the simulation\n\
+\n\
+";
+	fputs(help, stderr);
+}
+
+/**@todo add headless version, no GUI output*/
 int main(int argc, char **argv)
 {
-	/**@todo add command line arguments for debugging information*/
+	char *glut_argv[] = { argv[0], NULL };
+	int glut_argc = 0; 
+	int debug_level = 0;
+
+	int i;
+	for(i = 1; i < argc && argv[i][0] == '-'; i++)
+		switch(argv[i][1]) {
+		case '\0': /* stop argument processing */
+			goto done; 
+		case 'v':
+			debug_level++;
+			break;
+		case 's':
+			fprintf(stderr, "saving configuration file to '%s'\n", default_config_file);
+			return !save_config();
+		case 'h': 
+			usage(argv[0]); 
+			help();
+			return EXIT_SUCCESS; 
+		default:
+			error("invalid argument '%s'", argv[i][1]);
+		}
+done:
 	load_config();
+	if(debug_level)
+		verbosity = debug_level;
 
 	initialize_arena();
-	glutInit(&argc, argv);
+	glutInit(&glut_argc, glut_argv);
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH );
 	glutInitWindowPosition(window_x, window_y);
 	glutInitWindowSize(window_width, window_height);

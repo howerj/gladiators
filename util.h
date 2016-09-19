@@ -60,8 +60,8 @@ void draw_textbox(color_t color, textbox_t *t);
 
 void draw_rectangle(double x, double y, double width, double height, color_t color, bool lines, double thickness);
 
-double wrapx(double x);
-double wrapy(double y);
+double wrap_or_limit_x(double x);
+double wrap_or_limit_y(double y);
 double wraprad(double rad);
 
 color_t team_to_color(unsigned team);

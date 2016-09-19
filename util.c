@@ -322,24 +322,35 @@ void draw_textbox(color_t color, textbox_t *t)
 	draw_rectangle(t->x, t->y-t->height, t->width, t->height, color, true, 0.5);
 }
 
-double wrapx(double x)
+double wrap_or_limit_x(double x)
 {
-	if(x > Xmax)
-		x = Xmin;
-	if(x < Xmin)
-		x = Xmax;
+	if(wrap_mode) {
+		if(x > Xmax)
+			x = Xmin;
+		if(x < Xmin)
+			x = Xmax;
+	} else {
+		x = MIN(x, Xmax);
+		x = MAX(x, Xmin);
+	}
 	return x;
 }
 
-double wrapy(double y)
+double wrap_or_limit_y(double y)
 {
-	if(y > Ymax)
-		y = Ymin;
-	if(y < Ymin)
-		y = Ymax;
+	if(wrap_mode) {
+		if(y > Ymax)
+			y = Ymin;
+		if(y < Ymin)
+			y = Ymax;
+	} else {
+		y = MIN(y, Ymax);
+		y = MAX(y, Ymin);
+	}
 	return y;
 }
 
+/**@todo this is not correct */
 double wraprad(double rad)
 {
 	if(rad > 2*PI)

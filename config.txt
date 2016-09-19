@@ -1,8 +1,8 @@
 debug_mode 1
 Xmin 0.000000
-Xmax 150.000000
+Xmax 400.000000
 Ymin 0.000000
-Ymax 150.000000
+Ymax 400.000000
 window_width 800.000000
 window_height 500.000000
 tick_ms 15.000000
@@ -10,14 +10,14 @@ max_ticks_per_generation 500.000000
 window_x 60.000000
 window_y 20.000000
 detection_lines 100.000000
-mutation_rate 0.150000
+mutation_rate 0.050000
 gladiator_size 3.000000
 gladiator_health 2.000000
 gladiator_fire_timeout 15.000000
 gladiator_brain_length 5.000000
 gladiator_distance_per_tick 1.000000
 gladiator_fire_threshold 0.500000
-gladiator_vision 70.000000
+gladiator_vision 150.000000
 projectile_distance_per_tick 2.000000
 projectile_range 100.000000
 projectile_size 1.000000

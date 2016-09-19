@@ -12,18 +12,13 @@ is a toy project.
 
 ### Plan
 
-* Draw objects
-  - Objects; projectile, gladiator, food (optionally)
-* Collision detection
-* Neural network to control gladiator
-* Selection and breeding algorithm
+* Bug fixing
+* Tweak Algorithm
 
 ### Misc
 
-* FPS counter
 * Documentation/Tutorial
 * Add human player gladiator
-* Make things configurable
 * Experiment with feeding in different information into the 'gladiators'
   - For example, state about themselves could be input
   - Feedback/Internal state for the neural network

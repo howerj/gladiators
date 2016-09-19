@@ -14,7 +14,7 @@
 #include <string.h>
 #include <GL/glut.h>
 
-#define MAX_GLADIATORS            (3)
+#define MAX_GLADIATORS            (5)
 
 static gladiator_t *gladiators[MAX_GLADIATORS];
 static projectile_t *projectiles[MAX_GLADIATORS];
@@ -143,7 +143,8 @@ static bool detect_line_circle_intersection(
 		double Fy = (t-dt)*Dy + Ay;
 		double Gx = (t+dt)*Dx + Ax;
 		double Gy = (t+dt)*Dy + Ay;
-		/*draw_line(Ax, Ay, atan2((Ay-By) , ((Ax-By) == 0 ? 0.0001 : (Ax-By))), 100, 0.5, MAGENTA);*/
+		/**@todo make a debug level, make this configurable*/
+		/*draw_line(Ax, Ay, PI+atan2((Ay-Cy) , ((Ax-Cy) == 0 ? 0.0001 : (Ax-Cy))), sqrt(square(Ax - Cx) + square(Ay - Cy)), 0.5, MAGENTA);*/
 		draw_regular_polygon_filled(Fx, Fy, 0, 0.5, CIRCLE, CYAN);
 		draw_regular_polygon_filled(Gx, Gy, 0, 0.5, CIRCLE, BROWN);
 		return true;
@@ -174,7 +175,7 @@ static bool detect_enemy_gladiator(gladiator_t *k)
 {
 	for(size_t i = 0; i < MAX_GLADIATORS; i++) {
 		gladiator_t *c = gladiators[i];
-		if(k->team == c->team || c->health < 0)
+		if((k->team == c->team) || (c->health < 0))
 			continue;
 		bool t = detect_circle_cone_collision(
 				k->x, k->y, k->orientation, k->field_of_view, 

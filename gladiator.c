@@ -17,8 +17,8 @@ void gladiator_update(gladiator_t *g, const double inputs[], double outputs[])
 	g->enemy_projectile_detected = inputs[GLADIATOR_IN_VISION_PROJECTILE] > 0.0;
 	brain_update(g->brain, inputs, GLADIATOR_IN_LAST_INPUT, outputs, GLADIATOR_OUT_LAST_OUTPUT);
 	g->field_of_view = outputs[GLADIATOR_OUT_FIELD_OF_VIEW];
-	g->orientation  += outputs[GLADIATOR_OUT_TURN_LEFT]; /**@todo add limits to turn rate*/
-	g->orientation  -= outputs[GLADIATOR_OUT_TURN_RIGHT];
+	g->orientation  += wraprad(outputs[GLADIATOR_OUT_TURN_LEFT])/12; /**@todo make configurable*/
+	g->orientation  -= wraprad(outputs[GLADIATOR_OUT_TURN_RIGHT])/12;
 	g->orientation   = wraprad(g->orientation);
 	/**@todo add inertia */
 	const double distance = gladiator_distance_per_tick * outputs[GLADIATOR_OUT_MOVE_FORWARD] / brain_max_weight;

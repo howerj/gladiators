@@ -6,9 +6,7 @@
 #include <math.h>
 #include <assert.h>
 
-/**@todo make the layer system more generic, so more layers can be added at
- * will
- * @todo load and save brains to disk*/
+/**@todo load and save brains to disk*/
 
 typedef struct {
 	size_t weight_count;
@@ -25,9 +23,9 @@ typedef struct {
 
 struct brain_t {
 	size_t length;
+	size_t depth;
 	double  *inputs;
-	layer_t *layer1;
-	layer_t *layer2;
+	layer_t **layers;
 };
 
 static prng_t *rstate;
@@ -134,17 +132,19 @@ static void layer_print(FILE *output, unsigned depth, layer_t *layer)
 void brain_print(FILE *output, brain_t *b)
 {
 	fprintf(output, "brain:\n");
-	layer_print(output, 0, b->layer1);
-	layer_print(output, 1, b->layer2);
+	for(size_t i = 0; i < b->depth; i++)
+		layer_print(output, i, b->layers[i]);
 }
 
-brain_t *brain_new(bool rand, size_t length)
+brain_t *brain_new(bool rand, size_t length, size_t depth)
 {
 	brain_t *b   = allocate(sizeof(*b));
 	b->length    = length;
+	b->depth     = depth < 2 ? 2 : depth;
 	b->inputs    = allocate(sizeof(b->inputs[0]) * length);
-	b->layer1    = layer_new(rand, length);
-	b->layer2    = layer_new(rand, length);
+	b->layers    = allocate(sizeof(b->layers[0]) * length);
+	for(size_t i = 0; i < b->depth; i++)
+		b->layers[i] = layer_new(rand, length);
 	if(verbose(DEBUG) && rand)
 		brain_print(stdout, b);
 	return b;
@@ -152,9 +152,9 @@ brain_t *brain_new(bool rand, size_t length)
 
 brain_t *brain_copy(const brain_t *b)
 {
-	brain_t *n = brain_new(false, b->length);
-	n->layer1 = layer_copy(b->layer1);
-	n->layer2 = layer_copy(b->layer2);
+	brain_t *n = brain_new(false, b->length, b->depth);
+	for(size_t i = 0; i < b->depth; i++)
+		n->layers[i] = layer_copy(b->layers[i]);
 	return n;
 }
 
@@ -163,8 +163,8 @@ void brain_delete(brain_t *b)
 	if(!b)
 		return;
 	free(b->inputs);
-	layer_delete(b->layer1);
-	layer_delete(b->layer2);
+	for(size_t i = 0; i < b->depth; i++)
+		layer_delete(b->layers[i]);
 	free(b);
 }
 
@@ -178,8 +178,9 @@ static double calculate_response(neuron_t *n, const double in[], size_t len)
 
 void update_layer(layer_t *l, const double inputs[], size_t in_length)
 {
-	for(size_t i = 0; i < in_length; i++)
-		l->outputs[i] = calculate_response(l->neurons[i], inputs, in_length);
+	size_t length = MIN(l->length, in_length);
+	for(size_t i = 0; i < length; i++)
+		l->outputs[i] = calculate_response(l->neurons[i], inputs, length);
 }
 
 void brain_update(brain_t *b, const double inputs[], size_t in_length, double outputs[], size_t out_length)
@@ -187,13 +188,14 @@ void brain_update(brain_t *b, const double inputs[], size_t in_length, double ou
 	assert(b->length > in_length && b->length > out_length);
 	for(size_t i = 0; i < in_length; i++)
 		b->inputs[i] = inputs[i];
-	update_layer(b->layer1, b->inputs, in_length);
-	update_layer(b->layer2, b->layer1->outputs, b->layer1->length);
+	update_layer(b->layers[0], b->inputs, in_length);
+	for(size_t i = 1; i < b->depth; i++)
+		update_layer(b->layers[i], b->layers[i-1]->outputs, b->layers[i-1]->length);
 	for(size_t i = 0; i < out_length; i++)
-		outputs[i] = b->layer2->outputs[i];
+		outputs[i] = b->layers[b->depth - 1]->outputs[i];
 }
 
-void layer_mutate(layer_t *l)
+static void layer_mutate(layer_t *l)
 {
 	for(size_t i = 0; i < l->length; i++)
 		neuron_mutate(l->neurons[i]);
@@ -201,7 +203,7 @@ void layer_mutate(layer_t *l)
 
 void brain_mutate(brain_t *b)
 {
-	layer_mutate(b->layer1);
-	layer_mutate(b->layer2);
+	for(size_t i = 1; i < b->depth; i++)
+		layer_mutate(b->layers[i]);
 }
 

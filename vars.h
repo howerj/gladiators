@@ -12,7 +12,7 @@ typedef enum {
 } verbosity_t;
 
 #define CONFIG_X_MACRO\
-	X(unsigned,       verbosity,                NOTE)\
+	X(unsigned,  verbosity,                     NOTE)\
 	X(bool,      wrap_mode,                     false)\
 	X(double,    Xmin,                          0.0)\
 	X(double,    Xmax,                          200.0)\
@@ -24,13 +24,14 @@ typedef enum {
 	X(double,    window_y,                      20.0)\
 	X(double,    tick_ms,                       15.0)\
 	X(unsigned,  max_gladiators,                5)\
-	X(double,    max_ticks_per_generation,      1500.0)\
+	X(double,    max_ticks_per_generation,      4000.0)\
 	X(double,    detection_lines,               100.0)\
 	X(double,    mutation_rate,                 0.15)\
 	X(double,    gladiator_size,                3.0)\
 	X(double,    gladiator_health,              2.0)\
 	X(double,    gladiator_fire_timeout,        15.0)\
-	X(double,    gladiator_brain_length,        10.0)\
+	X(unsigned,  gladiator_brain_length,        10)\
+	X(unsigned,  gladiator_brain_depth,         2)\
 	X(double,    gladiator_distance_per_tick,   1.0)\
 	X(double,    gladiator_fire_threshold,      0.50)\
 	X(double,    gladiator_vision,              120.0)\

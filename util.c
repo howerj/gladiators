@@ -103,8 +103,7 @@ void draw_line(double x, double y, double angle, double magnitude, double thickn
 	glPopMatrix();
 }
 
-/** see: https://www.opengl.org/discussion_boards/showthread.php/160784-Drawing-Circles-in-OpenGL
- * @todo Make line only version, instead of just having a filled polygon, also add in depth as an option */
+/* see: https://www.opengl.org/discussion_boards/showthread.php/160784-Drawing-Circles-in-OpenGL */
 static void _draw_regular_polygon(
 		double x, double y, 
 		double orientation, 
@@ -223,11 +222,7 @@ void delete_prng(prng_t *state)
 
 /* see: https://en.wikibooks.org/wiki/OpenGL_Programming/Modern_OpenGL_Tutorial_Text_Rendering_01
  *      https://stackoverflow.com/questions/538661/how-do-i-draw-text-with-glut-opengl-in-c
- *      https://stackoverflow.com/questions/20866508/using-glut-to-simply-print-text 
- *
- * @todo Make printf like version, with format specifiers for color
- * @todo Make wrapper that keeps track of position, and optionally draws box
- * around text */
+ *      https://stackoverflow.com/questions/20866508/using-glut-to-simply-print-text */
 static int draw_string(const char *msg)
 {  
 	size_t len = strlen(msg);

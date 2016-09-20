@@ -80,7 +80,7 @@ gladiator_t *gladiator_new(unsigned team, double x, double y, double orientation
 	g->radius = gladiator_size;
 	size_t length = MAX(gladiator_brain_length, GLADIATOR_IN_LAST_INPUT);
 	length = MAX(length, GLADIATOR_OUT_LAST_OUTPUT);
-	g->brain = brain_new(true, length);
+	g->brain = brain_new(true, length, gladiator_brain_depth);
 	return g;
 }
 

@@ -165,8 +165,12 @@ static bool detect_line_circle_intersection(
 		double Fy = (t-dt)*Dy + Ay;
 		double Gx = (t+dt)*Dx + Ax;
 		double Gy = (t+dt)*Dy + Ay;
-		/**@todo make a debug level, make this configurable*/
-		/*draw_line(Ax, Ay, PI+atan2((Ay-Cy) , ((Ax-Cy) == 0 ? 0.0001 : (Ax-Cy))), sqrt(square(Ax - Cx) + square(Ay - Cy)), 0.5, MAGENTA);*/
+		
+		if(verbose(DEBUG)) {
+			draw_line(Ax, Ay, 
+				PI+atan2((Ay-Cy), (Ax-Cy)), 
+				sqrt(square(Ax - Cx) + square(Ay - Cy)), 0.5, MAGENTA);
+		}
 		draw_regular_polygon_filled(Fx, Fy, 0, 0.5, CIRCLE, CYAN);
 		draw_regular_polygon_filled(Gx, Gy, 0, 0.5, CIRCLE, BROWN);
 		return true;
@@ -433,7 +437,6 @@ When running there are a few commands that can issued:\n\
 	fputs(help, stderr);
 }
 
-/**@todo add headless version, no GUI output*/
 int main(int argc, char **argv)
 {
 	char *glut_argv[] = { argv[0], NULL };

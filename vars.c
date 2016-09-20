@@ -55,8 +55,8 @@ bool load_config(void)
 			goto end;
 		}
 		switch(db[i].type) {
-		case double_e:   fscanf(in, "%lf\n", (double*)db[i].addr);   break;
-		case bool_e:     fscanf(in, "%u\n", (unsigned*)db[i].addr);     break;
+		case double_e:   fscanf(in, "%lf\n", (double*)db[i].addr);  break;
+		case bool_e:     fscanf(in, "%u\n", (unsigned*)db[i].addr); break;
 		case int_e:      fscanf(in, "%d\n", (int*)db[i].addr);      break;
 		case unsigned_e: fscanf(in, "%u\n", (unsigned*)db[i].addr); break;
 		case end_e:      break;

@@ -108,7 +108,7 @@ double gladiator_fitness(gladiator_t *g)
 	double fitness = 0.0;
 	fitness += g->health * fitness_weight_health;
 	fitness += g->hits   * fitness_weight_hits;
-	fitness += (max_gladiators / (g->rank + 1)) * fitness_weight_rank;
+	fitness += ((max_gladiators / (g->rank + 1)) - 1) * fitness_weight_rank;
 	return fitness;
 }
 

@@ -110,9 +110,8 @@ static bool detect_projectile_collision(gladiator_t *g)
 		if(distance < (projectiles[i]->radius + g->radius)) {
 			g->health -= projectile_damage;
 			gladiators[i]->hits++;
-			if(gladiator_is_dead(gladiators[i])) {
+			if(gladiator_is_dead(gladiators[i]))
 				g->rank = alive--;
-			}
 			projectile_remove(projectiles[i]);
 			return true;
 		}
@@ -145,13 +144,15 @@ static inline double square(double a)
 
 /* @todo move to separate file
  * see:
- * https://stackoverflow.com/questions/1073336/circle-line-segment-collision-detection-algorithm*/
+ * https://stackoverflow.com/questions/1073336/circle-line-segment-collision-detection-algorithm
+ * @todo this seems to detect intersections across an infinite line, this needs
+ * to be directional*/
 static bool detect_line_circle_intersection(
 		double Ax, double Ay,
 		double Bx, double By,
 		double Cx, double Cy, double Cradius)
 {
-	double lab = sqrt(square(Bx - Ax) + square(By - By));
+	double lab = sqrt(square(Bx - Ax) + square(By - Ay));
 	double Dx  = (Bx - Ax) / lab;
 	double Dy  = (By - Ay) / lab;
 	double t   = Dx * (Cx - Ax) + Dy * (Cy - Ay);
@@ -167,6 +168,7 @@ static bool detect_line_circle_intersection(
 		double Gy = (t+dt)*Dy + Ay;
 		
 		if(verbose(DEBUG)) {
+			/**@todo check if this is correct */
 			draw_line(Ax, Ay, 
 				PI+atan2((Ay-Cy), (Ax-Cy)), 
 				sqrt(square(Ax - Cx) + square(Ay - Cy)), 0.5, MAGENTA);

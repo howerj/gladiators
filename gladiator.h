@@ -17,6 +17,9 @@ typedef struct {
 	bool enemy_projectile_detected;
 	double state1; /*internal state, experimental*/
 	unsigned rank; /*when the gladiator died, if it did*/
+	unsigned mutations; /*mutations from previous round*/
+	unsigned total_mutations; /*total mutations*/
+	double previous_fitness; /*parents fitness level*/
 	brain_t *brain;
 } gladiator_t;
 
@@ -49,7 +52,7 @@ gladiator_t *gladiator_copy(gladiator_t *g);
 void gladiator_update(gladiator_t *g, const double inputs[], double outputs[]);
 void gladiator_delete(gladiator_t *g);
 double gladiator_fitness(gladiator_t *g);
-void gladiator_mutate(gladiator_t *g);
+unsigned gladiator_mutate(gladiator_t *g);
 bool gladiator_is_dead(gladiator_t *g);
 
 #endif

@@ -29,17 +29,12 @@ typedef enum {
 
 typedef shape_e shape_t;
 
-struct prng_t;
-typedef struct prng_t prng_t;
-
 typedef struct {
 	double x, y;
 	bool draw_box;
 	double width, height;
 } textbox_t;
 
-void error(const char *fmt, ...);
-void warning(const char *fmt, ...);
 void *allocate(size_t sz);
 double rad2deg(double rad);
 double deg2rad(double deg);
@@ -50,10 +45,7 @@ void draw_line(double x, double y, double angle, double magnitude, double thickn
 int draw_text(color_t color, double x, double y, const char *fmt, ...);
 int vdraw_text(color_t color, double x, double y, const char *fmt, va_list ap);
 
-prng_t *new_prng(uint64_t seed);
-uint32_t prng(prng_t *state);
-double prngf(prng_t *state);
-void delete_prng(prng_t *state);
+double random_float(void);
 
 void fill_textbox(color_t color, textbox_t *t, const char *fmt, ...);
 void draw_textbox(color_t color, textbox_t *t);

@@ -12,7 +12,6 @@ is a toy project.
 
 ### Plan
 
-* Bug fixing
 * Tweak Algorithm
 
 ### Misc
@@ -27,7 +26,6 @@ health, etcetera. There would be a budget that for these that cannot be
 exceeded. Alternatively different AIs could be generated for each gladiator
 profile.
 * Inertia needs to be added to the physics engine
-* Naming convention for each module needs following
 
 ## References
 

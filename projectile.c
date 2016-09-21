@@ -42,7 +42,7 @@ void projectile_update(projectile_t *p)
 	p->y += distance * sin(p->orientation);
 	p->y = wrap_or_limit_y(p->y);
 	p->travelled += distance;
-	if(wrap_mode == false && (p->x == Xmin || p->x == Xmax || p->y == Ymin || p->y == Ymax))
+	if(arena_wraps_at_edges == false && (p->x == Xmin || p->x == Xmax || p->y == Ymin || p->y == Ymax))
 		projectile_remove(p);
 }
 

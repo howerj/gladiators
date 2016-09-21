@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <math.h>
+#include <time.h>
 #include <GL/glut.h>
 
 #define FONT_HEIGHT (15)
@@ -15,25 +16,7 @@
 struct prng_t {
 	uint64_t seed;
 };
-
-void error(const char *fmt, ...)
-{
-	va_list args;
-	va_start(args, fmt);
-	vfprintf(stderr, fmt, args);
-	va_end(args);
-	fputc('\n', stderr);
-	exit(EXIT_FAILURE);
-}
-
-void warning(const char *fmt, ...)
-{
-	va_list args;
-	va_start(args, fmt);
-	vfprintf(stderr, fmt, args);
-	va_end(args);
-	fputc('\n', stderr);
-}
+typedef struct prng_t prng_t;
 
 void *allocate(size_t sz)
 {
@@ -123,7 +106,7 @@ static void _draw_regular_polygon(
 		} else {
 			glBegin(GL_POLYGON);
 		}
-			for(double i = 0; i < 2 * PI; i += PI / sides)
+			for(double i = 0; i < 2.0 * PI; i += PI / sides)
 				glVertex3d(cos(i) * radius, sin(i) * radius, 0.0);
 		glEnd();
 	glPopMatrix();
@@ -196,28 +179,27 @@ static uint32_t lcg64_temper(uint64_t *seed)
     return temper(*seed >> 32);
 }
 
-prng_t *new_prng(uint64_t seed)
-{
-	prng_t *r = allocate(sizeof(prng_t));
-	r->seed = seed;
-	return r;
-}
-
-uint32_t prng(prng_t *state)
+static uint32_t prng(prng_t *state)
 {
 	return lcg64_temper(&state->seed);
 }
 
-double prngf(prng_t *state) 
+static double prngf(prng_t *state) 
 {
 	double r = prng(state);
 	r /= UINT32_MAX;
 	return r;
 }
 
-void delete_prng(prng_t *state)
+double random_float(void)
 {
-	free(state);
+	static bool set = false;
+	static prng_t rstate;
+	if(!set) {
+		rstate.seed = (program_random_seed != 0.0) ? program_random_seed : time(NULL);
+		set = true;
+	}
+  	return prngf(&rstate);
 }
 
 /* see: https://en.wikibooks.org/wiki/OpenGL_Programming/Modern_OpenGL_Tutorial_Text_Rendering_01
@@ -319,7 +301,7 @@ void draw_textbox(color_t color, textbox_t *t)
 
 double wrap_or_limit_x(double x)
 {
-	if(wrap_mode) {
+	if(arena_wraps_at_edges) {
 		if(x > Xmax)
 			x = Xmin;
 		if(x < Xmin)
@@ -333,7 +315,7 @@ double wrap_or_limit_x(double x)
 
 double wrap_or_limit_y(double y)
 {
-	if(wrap_mode) {
+	if(arena_wraps_at_edges) {
 		if(y > Ymax)
 			y = Ymin;
 		if(y < Ymin)
@@ -345,13 +327,11 @@ double wrap_or_limit_y(double y)
 	return y;
 }
 
-/**@todo this is not correct */
 double wraprad(double rad)
-{
-	if(rad > 2*PI)
-		rad = 0.0;
-	if(rad < 0)
-		rad = 2*PI;
+{ /* https://stackoverflow.com/questions/11980292/how-to-wrap-around-a-range */
+	rad = fmod(rad, 2.0 * PI);
+	if (rad < 0.0)
+		rad += 2.0 * PI;
 	return rad;
 }
 

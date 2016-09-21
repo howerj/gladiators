@@ -28,16 +28,12 @@ struct brain_t {
 	layer_t **layers;
 };
 
-static prng_t *rstate;
-
 static double randomer(double original)
 {
-	if(!rstate) /**@warning not threadsafe*/
-		rstate = new_prng(13);
-	double r = prngf(rstate) * brain_max_weight_increment;
-	if(prngf(rstate) < 0.5)
+	double r = random_float() * brain_max_weight_increment;
+	if(random_float() < 0.5)
 		r *= -1;
-	if(prngf(rstate) < 0.5)
+	if(random_float() < 0.5)
 		r += original;
 	else
 		r -= original;
@@ -97,20 +93,22 @@ static layer_t *layer_copy(layer_t *l)
 	return n;
 }
 
-static double mutation(double original, size_t length)
+static double mutation(double original, size_t length, unsigned *count)
 {
-	double rate = prngf(rstate);
-	if(rate <= (mutation_rate/length))
+	double rate = random_float();
+	if(rate <= (mutation_rate/length)) {
+		(*count)++;
 		return randomer(original);
+	}
 	return original;
 }
 
-static void neuron_mutate(neuron_t *n)
+static void neuron_mutate(neuron_t *n, unsigned *count)
 {
-	n->bias = mutation(n->bias, n->weight_count);
-	n->threshold = mutation(n->bias, n->weight_count);
+	n->bias = mutation(n->bias, n->weight_count, count);
+	n->threshold = mutation(n->bias, n->weight_count, count);
 	for(size_t i = 0; i < n->weight_count; i++)
-		n->weights[i] = mutation(n->weights[i], n->weight_count);
+		n->weights[i] = mutation(n->weights[i], n->weight_count, count);
 }
 
 static void neuron_print(FILE *output, neuron_t *n)
@@ -195,15 +193,17 @@ void brain_update(brain_t *b, const double inputs[], size_t in_length, double ou
 		outputs[i] = b->layers[b->depth - 1]->outputs[i];
 }
 
-static void layer_mutate(layer_t *l)
+static void layer_mutate(layer_t *l, unsigned *count)
 {
 	for(size_t i = 0; i < l->length; i++)
-		neuron_mutate(l->neurons[i]);
+		neuron_mutate(l->neurons[i], count);
 }
 
-void brain_mutate(brain_t *b)
+unsigned brain_mutate(brain_t *b)
 {
+	unsigned mutations = 0;
 	for(size_t i = 1; i < b->depth; i++)
-		layer_mutate(b->layers[i]);
+		layer_mutate(b->layers[i], &mutations);
+	return mutations;
 }
 

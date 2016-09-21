@@ -16,7 +16,7 @@ all: ${TARGET}
 
 ${TARGET}: ${OBJECTS}
 	@echo ${CC} $< -o $@
-	@${CC} ${CFLAGS} ${LDFLAGS} $^ -o $@
+	@${CC} ${CFLAGS} $^ ${LDFLAGS} -o $@
 
 run: ${TARGET}
 	./${TARGET}

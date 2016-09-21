@@ -10,28 +10,27 @@
 
 static void update_field_of_view(gladiator_t *g, double outputs[])
 {
-	g->field_of_view *= outputs[GLADIATOR_OUT_FIELD_OF_VIEW_OPEN];
-	g->field_of_view /= (fabs(outputs[GLADIATOR_OUT_FIELD_OF_VIEW_CLOSE]) + 0.0001);
-	g->field_of_view = MIN(g->field_of_view, 1);
-	g->field_of_view = MAX(g->field_of_view, 0);
+	g->field_of_view += outputs[GLADIATOR_OUT_FIELD_OF_VIEW_OPEN] / gladiator_field_of_view_divisor;
+	g->field_of_view -= outputs[GLADIATOR_OUT_FIELD_OF_VIEW_CLOSE] / gladiator_field_of_view_divisor;
+	g->field_of_view = MIN(g->field_of_view, gladiator_max_field_of_view);
+	g->field_of_view = MAX(g->field_of_view, gladiator_min_field_of_view);
 }
 
 static void update_orientation(gladiator_t *g, double outputs[])
 {
-	g->orientation  += wraprad(outputs[GLADIATOR_OUT_TURN_LEFT])/gladiator_turn_rate_divisor; 
-	g->orientation  -= wraprad(outputs[GLADIATOR_OUT_TURN_RIGHT])/gladiator_turn_rate_divisor;
+	g->orientation  += wraprad(outputs[GLADIATOR_OUT_TURN_LEFT]) / gladiator_turn_rate_divisor; 
+	g->orientation  -= wraprad(outputs[GLADIATOR_OUT_TURN_RIGHT]) / gladiator_turn_rate_divisor;
 	g->orientation   = wraprad(g->orientation);
 }
 
 static void update_distance(gladiator_t *g, double outputs[])
 {
 	/**@todo add inertia */
-	const double distance = gladiator_distance_per_tick * outputs[GLADIATOR_OUT_MOVE_FORWARD] / brain_max_weight_increment;
+	const double distance = gladiator_distance_per_tick * outputs[GLADIATOR_OUT_MOVE_FORWARD];
 	g->x += distance * cos(g->orientation);
 	g->x = wrap_or_limit_x(g->x);
 	g->y += distance * sin(g->orientation);
 	g->y = wrap_or_limit_y(g->y);
-
 }
 
 bool gladiator_is_dead(gladiator_t *g)
@@ -43,7 +42,8 @@ void gladiator_update(gladiator_t *g, const double inputs[], double outputs[])
 {
 	if(gladiator_is_dead(g))
 		return;
-	g->energy++;
+	if(g->energy < gladiator_max_energy)
+		g->energy += gladiator_energy_increment;
 	g->enemy_gladiator_detected  = inputs[GLADIATOR_IN_VISION_ENEMY] > 0.0;
 	g->enemy_projectile_detected = inputs[GLADIATOR_IN_VISION_PROJECTILE] > 0.0;
 
@@ -75,7 +75,7 @@ gladiator_t *gladiator_new(unsigned team, double x, double y, double orientation
 	g->x = wrap_or_limit_x(x);
 	g->y = wrap_or_limit_y(y);
 	g->orientation = orientation;
-	g->field_of_view = PI / 3;
+	g->field_of_view = PI / 3.0;
 	g->health = gladiator_health;
 	g->radius = gladiator_size;
 	size_t length = MAX(gladiator_brain_length, GLADIATOR_IN_LAST_INPUT);
@@ -90,15 +90,18 @@ void gladiator_delete(gladiator_t *g)
 	free(g);
 }
 
-void gladiator_mutate(gladiator_t *g)
+unsigned gladiator_mutate(gladiator_t *g)
 {
-	brain_mutate(g->brain);
+	return brain_mutate(g->brain);
 }
 
 gladiator_t *gladiator_copy(gladiator_t *g)
 {
 	gladiator_t *n = gladiator_new(g->team, g->x, g->y, g->orientation);
 	brain_delete(n->brain);
+	n->state1 = g->state1;
+	n->total_mutations = g->total_mutations;
+	n->previous_fitness = g->previous_fitness;
 	n->brain = brain_copy(g->brain);
 	return n;
 }
@@ -108,7 +111,8 @@ double gladiator_fitness(gladiator_t *g)
 	double fitness = 0.0;
 	fitness += g->health * fitness_weight_health;
 	fitness += g->hits   * fitness_weight_hits;
-	fitness += ((max_gladiators / (g->rank + 1)) - 1) * fitness_weight_rank;
+	fitness += g->energy * fitness_weight_energy;
+	fitness += ((arena_gladiator_count / (g->rank + 1)) - 1) * fitness_weight_rank;
 	return fitness;
 }
 

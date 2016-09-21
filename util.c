@@ -256,7 +256,7 @@ int vdraw_text(color_t color, double x, double y, const char *fmt, va_list ap)
 		{
 			double f = va_arg(ap, double);
 			char s[512] = {0};
-			sprintf(s, "%.4f", f);
+			sprintf(s, "%.2f", f);
 			r += draw_string(s);
 			break;
 		}
@@ -280,23 +280,25 @@ int draw_text(color_t color, double x, double y, const char *fmt, ...)
 	return r;
 }
 
-void fill_textbox(color_t color, textbox_t *t, const char *fmt, ...)
+void fill_textbox(textbox_t *t, bool on, const char *fmt, ...)
 {
 	double r;
 	va_list ap;
+	if(!on)
+		return;
 	va_start(ap, fmt);
-	r = vdraw_text(color, t->x, t->y - t->height, fmt, ap);
+	r = vdraw_text(t->color_text, t->x, t->y - t->height, fmt, ap);
 	va_end(ap);
 	t->width = MAX(t->width, r); 
 	t->height += ((Ymax / window_height) * FONT_HEIGHT); /*correct?*/
 }
 
-void draw_textbox(color_t color, textbox_t *t)
+void draw_textbox(textbox_t *t)
 {
 	if(!(t->draw_box))
 		return;
 	/**@todo fix this */
-	draw_rectangle(t->x, t->y-t->height, t->width, t->height, color, true, 0.5);
+	draw_rectangle(t->x, t->y-t->height, t->width, t->height, t->color_box, true, 0.5);
 }
 
 double wrap_or_limit_x(double x)

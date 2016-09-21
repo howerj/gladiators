@@ -32,8 +32,13 @@ typedef shape_e shape_t;
 typedef struct {
 	double x, y;
 	bool draw_box;
+	color_t color_text, color_box;
 	double width, height;
 } textbox_t;
+
+typedef struct { /**@note it might be worth translating some functions to use points*/
+	double x, y;
+} point_t;
 
 void *allocate(size_t sz);
 double rad2deg(double rad);
@@ -47,8 +52,8 @@ int vdraw_text(color_t color, double x, double y, const char *fmt, va_list ap);
 
 double random_float(void);
 
-void fill_textbox(color_t color, textbox_t *t, const char *fmt, ...);
-void draw_textbox(color_t color, textbox_t *t);
+void fill_textbox(textbox_t *t, bool on, const char *fmt, ...);
+void draw_textbox(textbox_t *t);
 
 void draw_rectangle(double x, double y, double width, double height, color_t color, bool lines, double thickness);
 

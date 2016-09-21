@@ -56,7 +56,7 @@ bool verbose(verbosity_t v)
 
 static bool is_bool_valid(struct config_db *db)
 {
-	unsigned b = *(unsigned*)(db->addr);
+	bool b = *(bool*)(db->addr);
 	return !(b > 1 || (!(db->zero_allowed) && !b));
 }
 
@@ -121,11 +121,12 @@ void load_config(void)
 		size_t i = find_config_item(item);
 		if(db[i].type == end_e)
 			error("unknown configuration item '%s'", item);
+		unsigned b = 0;
 		switch(db[i].type) {
-		case double_e:   fscanf(in, "%lf\n", (double*)db[i].addr);  break;
-		case bool_e:     fscanf(in, "%u\n",  (unsigned*)db[i].addr); break;
-		case int_e:      fscanf(in, "%d\n",  (int*)db[i].addr);      break;
-		case unsigned_e: fscanf(in, "%u\n",  (unsigned*)db[i].addr); break;
+		case double_e:   fscanf(in, "%lf\n", (double*)db[i].addr);          break;
+		case bool_e:     fscanf(in, "%u\n",  &b); *((bool*)db[i].addr) = b; break;
+		case int_e:      fscanf(in, "%d\n",  (int*)db[i].addr);             break;
+		case unsigned_e: fscanf(in, "%u\n",  (unsigned*)db[i].addr);        break;
 		case end_e:      break;
 		default:         error("invalid configuration item type '%d'", db[i].type);
 		}
@@ -136,13 +137,20 @@ void load_config(void)
 	fclose(in);
 }
 
-bool save_config(void)
+bool save_config_to_default_config_file(void)
 {
 	FILE *out = fopen(default_config_file, "wb");
 	if(!out) {
 		warning("failed to save configuration file '%s'", default_config_file);
 		return false;
 	}
+	bool r = save_config(out);
+	fclose(out);
+	return r;
+}
+
+bool save_config(FILE *out)
+{
 	for(size_t i = 0; db[i].type != end_e; i++) {
 		switch(db[i].type) {
 		case double_e:   fprintf(out, "%s %f\n", db[i].name, *(double*)db[i].addr);   break;
@@ -154,7 +162,6 @@ bool save_config(void)
 			error("invalid configuration item type '%d'", db[i].type);
 		}
 	}
-	fclose(out);
 	return true;
 }
 

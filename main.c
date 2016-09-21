@@ -24,7 +24,6 @@ static unsigned generation = 0, tick = 0;
 static bool step = false;
 static unsigned alive;
 
-/**@todo move to separate file*/
 static void keyboard_handler(unsigned char key, int x, int y)
 {
 	UNUSED(x);
@@ -101,6 +100,16 @@ static double fps(void)
 	return fps;
 }
 
+static bool detect_circle_circle_collision(
+		double ax, double ay, double aradius,
+		double bx, double by, double bradius)
+{
+	double dx = ax - bx;
+	double dy = ay - by;
+	double distance = sqrt(dx * dx + dy * dy);
+	return (distance < (aradius + bradius));
+}
+
 /**@warning if the gladiators or the projectiles are too fast this scheme will
  * work only intermittently, as the projectile warps past the gladiator. This
  * could be resolved with the line-circle detection algorithm to a certain
@@ -112,12 +121,13 @@ static bool detect_projectile_collision(gladiator_t *g)
 	if(gladiator_is_dead(g))
 		return false;
 	for(size_t i = 0; i < arena_gladiator_count; i++) {
-		if((projectiles[i]->team == g->team) || !projectile_is_active(projectiles[i]))
+		projectile_t *p = projectiles[i];
+		if((p->team == g->team) || !projectile_is_active(p))
 			continue;
-		double dx = g->x - projectiles[i]->x;
-		double dy = g->y - projectiles[i]->y;
-		double distance = sqrt(dx * dx + dy * dy);
-		if(distance < (projectiles[i]->radius + g->radius)) {
+		bool hit = detect_circle_circle_collision(
+				g->x, g->y, g->radius,
+				p->x, p->y, p->radius);
+		if(hit) {
 			g->health -= projectile_damage;
 			gladiators[i]->hits++;
 			if(gladiator_is_dead(gladiators[i]))
@@ -133,13 +143,14 @@ static bool detect_projectile_collision(gladiator_t *g)
 static bool detect_gladiator_collision(gladiator_t *g)
 { 
 	for(size_t i = 0; i < arena_gladiator_count; i++) {
-		if((gladiators[i]->team == g->team) || gladiator_is_dead(gladiators[i]))
+		gladiator_t *enemy = gladiators[i];
+		if((enemy->team == g->team) || gladiator_is_dead(enemy))
 			continue;
-		double dx = g->x - gladiators[i]->x;
-		double dy = g->y - gladiators[i]->y;
-		double distance = sqrt(dx * dx + dy * dy);
-		if(distance < (gladiators[i]->radius + g->radius)) {
-			if(verbose(NOTE))
+		bool hit = detect_circle_circle_collision(
+				g->x, g->y, g->radius,
+				enemy->x, enemy->y, enemy->radius);
+		if(hit) {
+			if(draw_gladiator_collision)
 				draw_regular_polygon_filled(g->x, g->y, 0, gladiator_size, CIRCLE, RED);
 			return true;
 		}
@@ -206,12 +217,12 @@ static bool detect_line_circle_intersection(
 			default: error("invalid quadrant");
 			}
 
-		if(rval) {
+		if(rval && draw_line_circle_collision) {
 			draw_regular_polygon_filled(Fx, Fy, 0, 1.0, CIRCLE, color);
 			draw_regular_polygon_filled(Gx, Gy, 0, 1.0, CIRCLE, color);
 		}
 
-		if(verbose(DEBUG) && rval) {
+		if(rval && draw_line_circle_debug_line) {
 			draw_line(Ax, Ay, 
 				orientation,
 				sqrt(square(Ax - Cx) + square(Ay - Cy)), 0.5, MAGENTA);
@@ -273,9 +284,9 @@ static bool detect_enemy_projectile(gladiator_t *k)
 
 }
 
-static void update_gladiator_inputs(gladiator_t *g, size_t i, double inputs[])
+static void update_gladiator_inputs(gladiator_t *g, double inputs[])
 {
-	inputs[GLADIATOR_IN_FIRED]             = projectile_is_active(projectiles[i]);
+	inputs[GLADIATOR_IN_CAN_FIRE]          = g->energy > projectile_energy_cost;
 	inputs[GLADIATOR_IN_FIELD_OF_VIEW]     = g->field_of_view;
 	inputs[GLADIATOR_IN_VISION_PROJECTILE] = detect_enemy_projectile(g);
 	inputs[GLADIATOR_IN_VISION_ENEMY]      = detect_enemy_gladiator(g);
@@ -290,7 +301,7 @@ static void update_gladiator_inputs(gladiator_t *g, size_t i, double inputs[])
 		cval = g->y == Ymin ? +0.5 : cval;
 		cval = g->y == Ymax ? +1.0 : cval;
 		inputs[GLADIATOR_IN_COLLISION_WALL] = cval;
-		if(cval != 0 && verbose(NOTE))
+		if(cval != 0 && draw_gladiator_wall_collision)
 			draw_regular_polygon_filled(g->x, g->y, 0, gladiator_size, CIRCLE, WHITE);
 	}
 }
@@ -323,7 +334,7 @@ static void update_scene(void)
 		memset(inputs,  0, sizeof(inputs));
 		memset(outputs, 0, sizeof(outputs));
 
-		update_gladiator_inputs(g, i, inputs);
+		update_gladiator_inputs(g, inputs);
 		gladiator_update(g, inputs, outputs);
 		update_gladiator_outputs(g, i, outputs);
 	}
@@ -333,55 +344,57 @@ static void draw_debug_info()
 {
 	if(!verbose(NOTE))
 		return;
-	textbox_t t = { .x = Xmin + Xmax/40, .y = Ymax - Ymax/40, .draw_box = false };
-	fill_textbox(WHITE, &t, "generation: %u", generation);
-	fill_textbox(WHITE, &t, "tick:       %u", tick);
-	fill_textbox(WHITE, &t, "fps:        %f", fps());
-	fill_textbox(WHITE, &t, "alive:      %u/%u", alive, arena_gladiator_count);
-	if(verbose(DEBUG))
-		fill_textbox(WHITE, &t, "prng:       %f", random_float());
+	textbox_t t = { .x = Xmin + Xmax/40, .y = Ymax - Ymax/40, .draw_box = false, .color_text = WHITE };
+
+	fill_textbox(&t, print_generation,        "generation: %u", generation);
+	fill_textbox(&t, print_arena_tick,        "tick:       %u", tick);
+	fill_textbox(&t, print_fps,               "fps:        %f", fps());
+	fill_textbox(&t, print_gladiators_alive,  "alive:      %u/%u", alive, arena_gladiator_count);
 
 	for(size_t i = 0; i < arena_gladiator_count; i++) {
 		gladiator_t *g = gladiators[i];
-		color_t c = team_to_color(g->team);
-		fill_textbox(c, &t, "gladiator:  %u", g->team); 
-		fill_textbox(c, &t, "health      %f", g->health);
-		fill_textbox(c, &t, "hit         %u", g->hits);
-		fill_textbox(c, &t, "energy      %f", g->energy);
-		fill_textbox(c, &t, "fitness     %f", gladiator_fitness(g));
-		fill_textbox(c, &t, "prev. fit.  %f", g->previous_fitness);
-		fill_textbox(c, &t, "mutations   %u", g->mutations);
-		fill_textbox(c, &t, "total mut.  %u", g->total_mutations);
-		if(verbose(DEBUG)) {
-			fill_textbox(c, &t, "angle       %f", g->orientation);
-			fill_textbox(c, &t, "state1      %f", g->state1);
-		}
+		t.color_text = team_to_color(g->team);
+		fill_textbox(&t, print_gladiator_team_number,     "gladiator:  %u", g->team); 
+		fill_textbox(&t, print_gladiator_health,          "health      %f", g->health);
+		fill_textbox(&t, print_gladiator_hits,            "hit         %u", g->hits);
+		fill_textbox(&t, print_gladiator_energy,          "energy      %f", g->energy);
+		fill_textbox(&t, print_gladiator_fitness,         "fitness     %f", gladiator_fitness(g));
+		fill_textbox(&t, print_gladiator_prev_fitness,    "prev. fit.  %f", g->previous_fitness);
+		fill_textbox(&t, print_gladiator_mutations,       "mutations   %u", g->mutations);
+		fill_textbox(&t, print_gladiator_total_mutations, "total mut.  %u", g->total_mutations);
+		fill_textbox(&t, print_gladiator_orientation,     "angle       %f", g->orientation);
+		fill_textbox(&t, print_gladiator_x,               "x           %f", g->x);
+		fill_textbox(&t, print_gladiator_y,               "y           %f", g->y);
+		fill_textbox(&t, print_gladiator_state1,          "state1      %f", g->state1);
+
 	}
 
-	draw_textbox(GREEN, &t);
+	draw_textbox(&t);
+}
+
+int cmpfunc(const void *a, const void *b)
+{
+	gladiator_t *ap = *((gladiator_t**)a);
+	gladiator_t *bp = *((gladiator_t**)b);
+	if(ap->previous_fitness <  bp->previous_fitness) return -1;
+	if(ap->previous_fitness == bp->previous_fitness) return  0;
+	if(ap->previous_fitness >  bp->previous_fitness) return  1;
+	return 0;
 }
 
 static void new_generation()
 {
-	size_t max = 0, min = 0;
-	double maxf = 0, minf = 0;
 	alive = arena_gladiator_count;
-	for(size_t i = 0; i < arena_gladiator_count; i++) {
-		double fit = gladiator_fitness(gladiators[i]);
-		gladiators[i]->previous_fitness = fit;
-		if(fit > maxf) {
-			max = i;
-			maxf = fit;
-		}
-		if(fit < minf) {
-			min = i;
-			minf = fit;
-		}
-	}
-	if(minf < maxf) {
-		gladiator_t *strongest = gladiator_copy(gladiators[max]);
-		gladiator_delete(gladiators[min]);
-		gladiators[min] = strongest;
+	for(size_t i = 0; i < arena_gladiator_count; i++)
+		gladiators[i]->previous_fitness = gladiator_fitness(gladiators[i]);
+
+	qsort(gladiators, arena_gladiator_count, sizeof(gladiators[0]), cmpfunc);
+
+	gladiator_t *strongest = gladiators[arena_gladiator_count - 1];
+	gladiator_t *weakest   = gladiators[0];
+	if(strongest->previous_fitness != weakest->previous_fitness) {
+		gladiator_delete(weakest);
+		gladiators[0] = gladiator_copy(strongest);
 	}
 
 	for(size_t i = 0; i < arena_gladiator_count; i++)
@@ -428,11 +441,9 @@ static void draw_scene(void)
 		update_scene();
 	}
 
-	if(arena_paused) {
-		textbox_t t = { .x = Xmax/2, .y = Ymax/2, .draw_box = false };
-		fill_textbox(WHITE, &t, "PAUSED: PRESS 'R' TO CONTINUE");
-		fill_textbox(WHITE, &t, "        PRESS 'S' TO SINGLE STEP");
-	}
+	textbox_t t = { .x = Xmax/2, .y = Ymax/2, .draw_box = false, .color_text = WHITE };
+	fill_textbox(&t, arena_paused, "PAUSED: PRESS 'R' TO CONTINUE");
+	fill_textbox(&t, arena_paused, "        PRESS 'S' TO SINGLE STEP");
 
 	glFlush();
 	glutSwapBuffers();
@@ -482,7 +493,8 @@ that can fire at and evade each other.\n\
 \n\
 \t-   stop processing options\n\
 \t-v  increase verbosity level, overrides configuration\n\
-\t-s  save configuration file and exit\n\
+\t-s  save the default configuration file and exit\n\
+\t-p  print out the default configuration to stdout and exit\n\
 \t-h  print this help message and exit\n\
 \n\
 When running there are a few commands that can issued:\n\
@@ -515,7 +527,9 @@ int main(int argc, char **argv)
 			break;
 		case 's':
 			fprintf(stderr, "saving configuration file to '%s'\n", default_config_file);
-			return !save_config();
+			return !save_config_to_default_config_file();
+		case 'p':
+			return save_config(stdout);
 		case 'h': 
 			usage(argv[0]); 
 			help();

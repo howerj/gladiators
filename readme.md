@@ -26,6 +26,7 @@ health, etcetera. There would be a budget that for these that cannot be
 exceeded. Alternatively different AIs could be generated for each gladiator
 profile.
 * Inertia needs to be added to the physics engine
+* Minimap and window
 
 ## References
 

@@ -18,7 +18,7 @@ ${TARGET}: ${OBJECTS}
 	@echo ${CC} $< -o $@
 	@${CC} ${CFLAGS} $^ ${LDFLAGS} -o $@
 
-run: ${TARGET}
+run: ${TARGET} gladiator.conf
 	./${TARGET}
 
 gladiator.conf: ${TARGET}

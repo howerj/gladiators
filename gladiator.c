@@ -64,7 +64,7 @@ void gladiator_draw(gladiator_t *g)
 		draw_line(g->x, g->y, g->orientation - g->field_of_view/2, Ymax/5, g->radius/2, target);
 		draw_line(g->x, g->y, g->orientation + g->field_of_view/2, Ymax/5, g->radius/2, target);
 	}
-	draw_regular_polygon_filled(g->x, g->y, g->orientation, g->radius/2, CIRCLE, !gladiator_is_dead(g) ? WHITE : BLACK);
+	draw_regular_polygon_filled(g->x, g->y, g->orientation, g->radius/2, CIRCLE, g->health > 0 ? WHITE : BLACK);
 	draw_regular_polygon_filled(g->x, g->y, g->orientation, g->radius, PENTAGON, team_to_color(g->team));
 }
 
@@ -112,7 +112,7 @@ double gladiator_fitness(gladiator_t *g)
 	fitness += g->health * fitness_weight_health;
 	fitness += g->hits   * fitness_weight_hits;
 	fitness += g->energy * fitness_weight_energy;
-	fitness += ((arena_gladiator_count / (g->rank + 1)) - 1) * fitness_weight_rank;
+	/*fitness += ((arena_gladiator_count / (g->rank + 1)) - 1) * fitness_weight_rank;*/
 	return fitness;
 }
 

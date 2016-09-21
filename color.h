@@ -4,15 +4,15 @@
 /**@todo Make RGB struct */
 
 typedef enum {
-	WHITE    =  'w',
-	RED      =  'r',
-	YELLOW   =  'y',
-	GREEN    =  'g',
-	CYAN     =  'c',
-	BLUE     =  'b',
-	MAGENTA  =  'm',
-	BROWN    =  'B',
-	BLACK    =  '*',
+	WHITE,
+	RED,
+	YELLOW,
+	GREEN,
+	CYAN,
+	BLUE,
+	MAGENTA,
+	BROWN,
+	BLACK,
 	INVALID_COLOR
 } colors_e;
 

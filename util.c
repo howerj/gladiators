@@ -1,7 +1,13 @@
-/**@file  util.c
- * @brief generic C and Open GL utilities */
+/** @file       util.c
+ *  @brief      
+ *  @author     Richard Howe (2016)
+ *  @license    LGPL v2.1 or Later 
+ *              <https://www.gnu.org/licenses/old-licenses/lgpl-2.1.en.html> 
+ *  @email      howe.r.j.89@gmail.com*/
+
 #include "util.h"
 #include "vars.h"
+#include <assert.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -20,6 +26,7 @@ typedef struct prng_t prng_t;
 
 void *allocate(size_t sz)
 {
+	assert(sz);
 	void *r = calloc(sz, 1);
 	if(!r)
 		error("allocation failed of size %zu\n", sz);
@@ -53,12 +60,10 @@ void set_color(color_t color)
 	}
 }
 
-/**@warning not threadsafe, although of no real consequence*/
-static bool warned = false;
-
 color_t team_to_color(unsigned team)
 {
 	static const color_t colors[] = { RED, GREEN, YELLOW, CYAN, BLUE, MAGENTA };
+	static bool warned = false; /**@warning not threadsafe, although of no real consequence*/
 	if(team >= sizeof(colors)/sizeof(colors[0])) {
 		if(!warned) {
 			warning("gladiator: ran out of team colors %u");
@@ -69,9 +74,10 @@ color_t team_to_color(unsigned team)
 	return colors[team];
 }
 
-
 void draw_line(double x, double y, double angle, double magnitude, double thickness, color_t color)
 {
+	if(program_run_headless)
+		return;
 	glMatrixMode(GL_MODELVIEW);
 	glPushMatrix();
 		glLoadIdentity();
@@ -94,6 +100,8 @@ static void _draw_regular_polygon(
 		bool lines, double thickness, 
 		color_t color)
 {
+	if(program_run_headless)
+		return;
 	glMatrixMode(GL_MODELVIEW);
 	glPushMatrix();
 		glLoadIdentity();
@@ -114,6 +122,8 @@ static void _draw_regular_polygon(
 
 void draw_rectangle(double x, double y, double width, double height, color_t color, bool lines, double thickness)
 {
+	if(program_run_headless)
+		return;
 	glMatrixMode(GL_MODELVIEW);
 	glPushMatrix();
 		glLoadIdentity();
@@ -153,12 +163,16 @@ double shape_to_sides(shape_t shape)
 
 void draw_regular_polygon_filled(double x, double y, double orientation, double radius, shape_t shape, color_t color)
 {
+	if(program_run_headless)
+		return;
 	double sides = shape_to_sides(shape);
 	_draw_regular_polygon(x, y, orientation, radius, sides, false, 0, color);
 }
 
 void draw_regular_polygon_line(double x, double y, double orientation, double radius, shape_t shape, double thickness, color_t color)
 {
+	if(program_run_headless)
+		return;
 	double sides = shape_to_sides(shape);
 	_draw_regular_polygon(x, y, orientation, radius, sides, true, thickness, color);
 }
@@ -175,17 +189,20 @@ static uint32_t temper(uint32_t x)
 /* from: https://stackoverflow.com/questions/19083566 */
 static uint32_t lcg64_temper(uint64_t *seed)
 {
-    *seed = 6364136223846793005ULL * *seed + 1;
-    return temper(*seed >> 32);
+	assert(seed);
+	*seed = 6364136223846793005ULL * *seed + 1;
+	return temper(*seed >> 32);
 }
 
 static uint32_t prng(prng_t *state)
 {
+	assert(state);
 	return lcg64_temper(&state->seed);
 }
 
 static double prngf(prng_t *state) 
 {
+	assert(state);
 	double r = prng(state);
 	r /= UINT32_MAX;
 	return r;
@@ -206,10 +223,13 @@ double random_float(void)
  *      https://stackoverflow.com/questions/538661/how-do-i-draw-text-with-glut-opengl-in-c
  *      https://stackoverflow.com/questions/20866508/using-glut-to-simply-print-text */
 static int draw_string(const char *msg)
-{  
+{	
+	assert(msg);
+	if(program_run_headless)
+		return 0;
 	size_t len = strlen(msg);
 	for(size_t i = 0; i < len; i++)
-		glutBitmapCharacter(GLUT_BITMAP_9_BY_15, msg[i]);
+		glutBitmapCharacter(GLUT_BITMAP_9_BY_15, msg[i]);	
 	return len;
 }
 
@@ -217,9 +237,12 @@ int vdraw_text(color_t color, double x, double y, const char *fmt, va_list ap)
 {
 	char f;
 	int r = 0;
+	assert(fmt);
+	if(program_run_headless)
+		return 0;
+
 	glMatrixMode(GL_MODELVIEW);
 	glPushMatrix();
-
 	set_color(color); 
 	/*glTranslated(x, y, 0);*/
 	glRasterPos2d(x, y);
@@ -272,6 +295,9 @@ int vdraw_text(color_t color, double x, double y, const char *fmt, va_list ap)
 
 int draw_text(color_t color, double x, double y, const char *fmt, ...)
 {
+	assert(fmt);
+	if(program_run_headless)
+		return 0 ;
 	int r;
 	va_list ap;
 	va_start(ap, fmt);
@@ -284,7 +310,8 @@ void fill_textbox(textbox_t *t, bool on, const char *fmt, ...)
 {
 	double r;
 	va_list ap;
-	if(!on)
+	assert(t && fmt);
+	if(!on || program_run_headless)
 		return;
 	va_start(ap, fmt);
 	r = vdraw_text(t->color_text, t->x, t->y - t->height, fmt, ap);
@@ -295,7 +322,8 @@ void fill_textbox(textbox_t *t, bool on, const char *fmt, ...)
 
 void draw_textbox(textbox_t *t)
 {
-	if(!(t->draw_box))
+	assert(t);
+	if(!(t->draw_box) || program_run_headless)
 		return;
 	/**@todo fix this */
 	draw_rectangle(t->x, t->y-t->height, t->width, t->height, t->color_box, true, 0.5);

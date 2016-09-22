@@ -1,3 +1,10 @@
+/** @file       vars.h
+ *  @brief      
+ *  @author     Richard Howe (2016)
+ *  @license    LGPL v2.1 or Later 
+ *              <https://www.gnu.org/licenses/old-licenses/lgpl-2.1.en.html> 
+ *  @email      howe.r.j.89@gmail.com*/
+
 #ifndef VARS_H
 #define VARS_H
 
@@ -13,6 +20,8 @@ typedef enum {
 	ALL_MESSAGES_ON,
 } verbosity_t;
 
+/**@todo add global constants in here, they should not be saved, nor allowed to
+ * be loaded from disk*/
 #define CONFIG_X_MACRO\
 	X(unsigned,  arena_gladiator_count,            5,       false)\
 	X(bool,      arena_paused,                     false,   true)\
@@ -24,6 +33,7 @@ typedef enum {
 	X(bool,      draw_gladiator_wall_collision,    true,    true)\
 	X(bool,      draw_line_circle_collision,       false,   true)\
 	X(bool,      draw_line_circle_debug_line,      false,   true)\
+	X(bool,      draw_gladiator_target_lines,      true,   true)\
 	X(double,    fitness_weight_energy,            0.0,     true)\
 	X(double,    fitness_weight_health,            1.5,     true)\
 	X(double,    fitness_weight_hits,              1.0,     true)\
@@ -64,6 +74,7 @@ typedef enum {
 	X(bool,      print_gladiator_y,                false,   true)\
 	X(unsigned,  program_log_level,                NOTE,    true)\
 	X(double,    program_random_seed,              7.0,     true)\
+	X(bool,      program_run_headless,             false,   true)\
 	X(double,    projectile_damage,                1.0,     true)\
 	X(double,    projectile_distance_per_tick,     2.0,     true)\
 	X(double,    projectile_energy_cost,           150.0,   true)\
@@ -89,6 +100,8 @@ bool verbose(verbosity_t v);
 
 void error(const char *fmt, ...);
 void warning(const char *fmt, ...);
+void note(const char *fmt, ...);
+void debug(const char *fmt, ...);
 
 extern const char *default_config_file;
 

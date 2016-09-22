@@ -1,10 +1,18 @@
+/** @file       brain.c
+ *  @brief      A multilayer neural network
+ *  @author     Richard Howe (2016)
+ *  @license    LGPL v2.1 or Later 
+ *              <https://www.gnu.org/licenses/old-licenses/lgpl-2.1.en.html> 
+ *  @email      howe.r.j.89@gmail.com
+ *  @todo       make calculate_response configurable, so we can use different
+ *              functions in its palce*/
 #include "brain.h"
 #include "util.h"
 #include "vars.h"
-#include <stdlib.h>
-#include <stdio.h>
-#include <math.h>
 #include <assert.h>
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 /**@todo load and save brains to disk*/
 
@@ -69,6 +77,7 @@ static layer_t *layer_new(bool rand, size_t length)
 
 static void layer_delete(layer_t *l)
 {
+	assert(l);
 	for(size_t i = 0; i < l->length; i++)
 		neuron_delete(l->neurons[i]);
 	free(l->neurons);
@@ -78,6 +87,7 @@ static void layer_delete(layer_t *l)
 
 static void neuron_copy_over(neuron_t *dst, const neuron_t *src)
 {
+	assert(dst && src);
 	dst->bias = src->bias;
 	dst->weight_count = src->weight_count;
 	dst->threshold = src->threshold;
@@ -95,6 +105,7 @@ static layer_t *layer_copy(layer_t *l)
 
 static double mutation(double original, size_t length, unsigned *count)
 {
+	assert(count);
 	double rate = random_float();
 	if(rate <= (mutation_rate/length)) {
 		(*count)++;
@@ -105,6 +116,7 @@ static double mutation(double original, size_t length, unsigned *count)
 
 static void neuron_mutate(neuron_t *n, unsigned *count)
 {
+	assert(n && count);
 	n->bias = mutation(n->bias, n->weight_count, count);
 	n->threshold = mutation(n->bias, n->weight_count, count);
 	for(size_t i = 0; i < n->weight_count; i++)
@@ -122,6 +134,7 @@ static void neuron_print(FILE *output, neuron_t *n)
 
 static void layer_print(FILE *output, unsigned depth, layer_t *layer)
 {
+	assert(output && layer);
 	fprintf(output, "\tlayer %d:\n", depth);
 	for(size_t i = 0; i < layer->length; i++)
 		neuron_print(output, layer->neurons[i]);
@@ -129,6 +142,7 @@ static void layer_print(FILE *output, unsigned depth, layer_t *layer)
 
 void brain_print(FILE *output, brain_t *b)
 {
+	assert(output && b);
 	fprintf(output, "brain:\n");
 	for(size_t i = 0; i < b->depth; i++)
 		layer_print(output, i, b->layers[i]);
@@ -136,6 +150,7 @@ void brain_print(FILE *output, brain_t *b)
 
 brain_t *brain_new(bool rand, size_t length, size_t depth)
 {
+	assert(length && depth);
 	brain_t *b   = allocate(sizeof(*b));
 	b->length    = length;
 	b->depth     = depth < 2 ? 2 : depth;
@@ -150,6 +165,7 @@ brain_t *brain_new(bool rand, size_t length, size_t depth)
 
 brain_t *brain_copy(const brain_t *b)
 {
+	assert(b);
 	brain_t *n = brain_new(false, b->length, b->depth);
 	for(size_t i = 0; i < b->depth; i++)
 		n->layers[i] = layer_copy(b->layers[i]);
@@ -166,16 +182,18 @@ void brain_delete(brain_t *b)
 	free(b);
 }
 
-static double calculate_response(neuron_t *n, const double in[], size_t len) 
+static double calculate_response(neuron_t *n, const double in[], size_t length) 
 {    /* see http://www.cs.bham.ac.uk/~jxb/NN/nn.html*/
+	assert(n && in && length);
 	double total = n->bias;
-	for(size_t i = 0; i < len; i++)
+	for(size_t i = 0; i < length; i++)
 		total += in[i] * n->weights[i];
 	return 1.0 / (1.0 + exp(-total));
 }
 
 void update_layer(layer_t *l, const double inputs[], size_t in_length)
 {
+	assert(l && inputs && in_length);
 	size_t length = MIN(l->length, in_length);
 	for(size_t i = 0; i < length; i++)
 		l->outputs[i] = calculate_response(l->neurons[i], inputs, length);
@@ -195,12 +213,14 @@ void brain_update(brain_t *b, const double inputs[], size_t in_length, double ou
 
 static void layer_mutate(layer_t *l, unsigned *count)
 {
+	assert(l && count);
 	for(size_t i = 0; i < l->length; i++)
 		neuron_mutate(l->neurons[i], count);
 }
 
 unsigned brain_mutate(brain_t *b)
 {
+	assert(b);
 	unsigned mutations = 0;
 	for(size_t i = 1; i < b->depth; i++)
 		layer_mutate(b->layers[i], &mutations);

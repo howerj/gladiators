@@ -1,7 +1,6 @@
 LDFLAGS  = -lglut -lGL -lm
 CFLAGS   = -std=c99 -Wall -Wextra -g
-
-# https://stackoverflow.com/questions/10520839/make-implicit-rules-and-header-files
+RM      := rm
 SOURCES := ${wildcard *.c}
 OBJECTS := ${SOURCES:%.c=%.o}
 DEPS    := ${SOURCES:%.c=%.d}
@@ -18,7 +17,7 @@ ${TARGET}: ${OBJECTS}
 	@echo ${CC} $< -o $@
 	@${CC} ${CFLAGS} $^ ${LDFLAGS} -o $@
 
-run: ${TARGET} gladiator.conf
+run: ${TARGET}
 	./${TARGET}
 
 gladiator.conf: ${TARGET}
@@ -27,4 +26,4 @@ gladiator.conf: ${TARGET}
 -include ${DEPS}
 
 clean:
-	rm -f *.o *.d ${TARGET}
+	${RM} -f *.o *.d *.out ${TARGET}

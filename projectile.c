@@ -1,10 +1,21 @@
+/** @file       projectile.c
+ *  @brief      
+ *  @author     Richard Howe (2016)
+ *  @license    LGPL v2.1 or Later 
+ *              <https://www.gnu.org/licenses/old-licenses/lgpl-2.1.en.html> 
+ *  @email      howe.r.j.89@gmail.com*/
+
 #include "projectile.h"
 #include "vars.h"
 #include "util.h"
+#include <assert.h>
 #include <math.h>
 
 projectile_t *projectile_new(unsigned team, double x, double y, double orientation)
 {
+	assert(team < arena_gladiator_count);
+	assert(x >= Xmin && x <= Xmax);
+	assert(y >= Ymin && y <= Ymax);
 	projectile_t *p = allocate(sizeof(*p));
 	p->x = wrap_or_limit_x(x);
 	p->y = wrap_or_limit_y(y);
@@ -17,16 +28,19 @@ projectile_t *projectile_new(unsigned team, double x, double y, double orientati
 
 bool projectile_is_active(projectile_t *p)
 {
+	assert(p);
 	return p->travelled < projectile_range;
 }
 
 void projectile_remove(projectile_t *p)
 {
+	assert(p);
 	p->travelled += projectile_range;
 }
 
 void projectile_draw(projectile_t *p)
 {
+	assert(p);
 	if(!projectile_is_active(p))
 		return;
 	draw_regular_polygon_filled(p->x, p->y, p->orientation, projectile_size, TRIANGLE, team_to_color(p->team));
@@ -34,6 +48,7 @@ void projectile_draw(projectile_t *p)
 
 void projectile_update(projectile_t *p)
 {
+	assert(p);
 	const double distance = projectile_distance_per_tick;
 	if(!projectile_is_active(p))
 		return;
@@ -48,6 +63,7 @@ void projectile_update(projectile_t *p)
 
 bool projectile_fire(projectile_t *p, double x, double y, double orientation)
 {
+	assert(p);
 	if(projectile_is_active(p))
 		return false;
 	p->travelled = 0;

@@ -1,15 +1,23 @@
-/** @file gladiator.c
- *  @brief Using genetic algorithms to select a gladiator controlled by a
- *  neural network. 
- *
- *  @todo make a "headless" mode that does not use the GUI
- *  @todo make structures for Cartesian and Polar coordinates
- *  @todo comment files, add Doxygen headers and LICENSE */
+/** @file       main.c
+ *  @brief      Gladiators program: Evolve neural network controlled gladiators
+ *  @author     Richard Howe (2016)
+ *  @license    LGPL v2.1 or Later 
+ *              <https://www.gnu.org/licenses/old-licenses/lgpl-2.1.en.html> 
+ *  @email      howe.r.j.89@gmail.com
+ *  @todo a "headless" mode that does not use the GUI
+ *  @todo structures for Cartesian and Polar coordinates
+ *  @todo allow the arena to be larger than the screen, and add a minimap
+ *  @todo add a player object (gladiator, but human controlled)
+ *  @todo comment files, add Doxygen headers and LICENSE 
+ *  @todo make "food" - which can replenish energy (populate randomly, or from
+ *        kills, or both) */
 
 #include "util.h"
 #include "gladiator.h"
 #include "projectile.h"
+#include "collision.h"
 #include "vars.h"
+#include <assert.h>
 #include <ctype.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -100,16 +108,6 @@ static double fps(void)
 	return fps;
 }
 
-static bool detect_circle_circle_collision(
-		double ax, double ay, double aradius,
-		double bx, double by, double bradius)
-{
-	double dx = ax - bx;
-	double dy = ay - by;
-	double distance = sqrt(dx * dx + dy * dy);
-	return (distance < (aradius + bradius));
-}
-
 /**@warning if the gladiators or the projectiles are too fast this scheme will
  * work only intermittently, as the projectile warps past the gladiator. This
  * could be resolved with the line-circle detection algorithm to a certain
@@ -158,103 +156,12 @@ static bool detect_gladiator_collision(gladiator_t *g)
 	return false;
 }
 
-static inline double square(double a)
-{
-	return a*a;
-}
-
-typedef enum {
-	quadrant_0_0,
-	quadrant_0_1,
-	quadrant_1_0,
-	quadrant_1_1,
-} quadrant_e;
-
-static quadrant_e quadrant(double angle)
-{
-	quadrant_e r = quadrant_0_0;
-	if(angle < PI*0.5)
-		r = quadrant_0_0;
-	else if(angle < PI)
-		r = quadrant_0_1;
-	else if(angle < PI*1.5)
-		r = quadrant_1_0;
-	else
-		r = quadrant_1_1;
-	return r;
-}
-
-/* @todo move to separate file
- * see: https://stackoverflow.com/questions/1073336/circle-line-segment-collision-detection-algorithm */
-static bool detect_line_circle_intersection(
-		double orientation, bool use_orientation,
-		double Ax, double Ay,
-		double Bx, double By,
-		double Cx, double Cy, double Cradius, color_t color)
-{
-	double lab = sqrt(square(Bx - Ax) + square(By - Ay));
-	double Dx  = (Bx - Ax) / lab;
-	double Dy  = (By - Ay) / lab;
-	double t   = Dx * (Cx - Ax) + Dy * (Cy - Ay);
-	double Ex  = t * Dx + Ax;
-	double Ey  = t * Dy + Ay;
-	double lec = sqrt(square(Ex - Cx) + square(Ey - Cy));
-
-	if(lec < Cradius) { /* two hits on circle */
-		double dt = sqrt(square(Cradius) - square(lec));
-		double Fx = (t-dt)*Dx + Ax;
-		double Fy = (t-dt)*Dy + Ay;
-		double Gx = (t+dt)*Dx + Ax;
-		double Gy = (t+dt)*Dy + Ay;
-		bool rval = true;
-
-		if(use_orientation) 
-			switch(quadrant(orientation)) {
-			case quadrant_0_0: rval = Ax < Fx && Gx < Bx; break;
-			case quadrant_0_1: rval = Fx < Ax && Bx < Gx; break;
-			case quadrant_1_0: rval = Fx < Ax && Bx < Gx; break;
-			case quadrant_1_1: rval = Ax < Fx && Gx < Bx; break;
-			default: error("invalid quadrant");
-			}
-
-		if(rval && draw_line_circle_collision) {
-			draw_regular_polygon_filled(Fx, Fy, 0, 1.0, CIRCLE, color);
-			draw_regular_polygon_filled(Gx, Gy, 0, 1.0, CIRCLE, color);
-		}
-
-		if(rval && draw_line_circle_debug_line) {
-			draw_line(Ax, Ay, 
-				orientation,
-				sqrt(square(Ax - Cx) + square(Ay - Cy)), 0.5, MAGENTA);
-
-		}
-		return rval;
-	} else if(lec == Cradius) { /* tangent */
-		return false;
-	} else { /* no hits */
-		return false;
-	}
-}
-
-static bool detect_circle_cone_collision(
-		double kx, double ky, double korientation, double ksweep, unsigned lines, double klen,
-		double cx, double cy, double cradius, color_t color)
-{
-	unsigned j = 0;
-	for(double i = korientation - (ksweep/2); j < lines; i += (ksweep/lines), j++) {
-		double bx = kx + (klen * cos(i)); /**@note does not handle wrapping */
-		double by = ky + (klen * sin(i));
-		bool d = detect_line_circle_intersection(i, true, kx, ky, bx, by, cx, cy, cradius, color);
-		if(d)
-			return true;
-	}
-	return false;
-}
-
 static bool detect_enemy_gladiator(gladiator_t *k)
 {
+	assert(k);
 	for(size_t i = 0; i < arena_gladiator_count; i++) {
 		gladiator_t *c = gladiators[i];
+		assert(c);
 		if((k->team == c->team) || gladiator_is_dead(c))
 			continue;
 		bool t = detect_circle_cone_collision(
@@ -269,8 +176,10 @@ static bool detect_enemy_gladiator(gladiator_t *k)
 
 static bool detect_enemy_projectile(gladiator_t *k)
 {
+	assert(k);
 	for(unsigned j = 0; j < arena_gladiator_count; j++) {
 		projectile_t *c = projectiles[j];
+		assert(c);
 		if(k->team == c->team || !projectile_is_active(c))
 			continue;
 		bool t = detect_circle_cone_collision(
@@ -281,11 +190,11 @@ static bool detect_enemy_projectile(gladiator_t *k)
 			return true;
 	}
 	return false;
-
 }
 
 static void update_gladiator_inputs(gladiator_t *g, double inputs[])
 {
+	assert(g && inputs);
 	inputs[GLADIATOR_IN_CAN_FIRE]          = g->energy > projectile_energy_cost;
 	inputs[GLADIATOR_IN_FIELD_OF_VIEW]     = g->field_of_view;
 	inputs[GLADIATOR_IN_VISION_PROJECTILE] = detect_enemy_projectile(g);
@@ -372,7 +281,7 @@ static void draw_debug_info()
 	draw_textbox(&t);
 }
 
-int cmpfunc(const void *a, const void *b)
+static int fitness_compare_function(const void *a, const void *b)
 {
 	gladiator_t *ap = *((gladiator_t**)a);
 	gladiator_t *bp = *((gladiator_t**)b);
@@ -388,7 +297,7 @@ static void new_generation()
 	for(size_t i = 0; i < arena_gladiator_count; i++)
 		gladiators[i]->previous_fitness = gladiator_fitness(gladiators[i]);
 
-	qsort(gladiators, arena_gladiator_count, sizeof(gladiators[0]), cmpfunc);
+	qsort(gladiators, arena_gladiator_count, sizeof(gladiators[0]), fitness_compare_function);
 
 	gladiator_t *strongest = gladiators[arena_gladiator_count - 1];
 	gladiator_t *weakest   = gladiators[0];
@@ -465,17 +374,52 @@ static void initialize_arena()
 	}
 }
 
-static void initialize_rendering(void)
-{
-	glShadeModel(GL_FLAT);   
-	glEnable(GL_DEPTH_TEST);
-}
-
 static void timer_callback(int value)
 {
 	if(!arena_paused || step)
 		tick++;
 	glutTimerFunc(arena_tick_ms, timer_callback, value);
+}
+
+static void initialize_rendering(char *arg_0)
+{
+	char *glut_argv[] = { arg_0, NULL };
+	int glut_argc = 0;
+	glutInit(&glut_argc, glut_argv);
+	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH );
+	glutInitWindowPosition(window_x_starting_position, window_y_starting_position);
+	glutInitWindowSize(window_width, window_height);
+	glutCreateWindow("Gladiators");
+	glShadeModel(GL_FLAT);   
+	glEnable(GL_DEPTH_TEST);
+	glutKeyboardFunc(keyboard_handler);
+	glutSpecialFunc(keyboard_special_handler);
+	glutReshapeFunc(resize_window);
+	glutDisplayFunc(draw_scene);
+	glutTimerFunc(arena_tick_ms, timer_callback, 0);
+}
+
+static void print_fitness(FILE *out, gladiator_t **g, size_t count)
+{
+	for(size_t i = 0; i < count; i++)
+		fprintf(out, "%.2f ", g[i]->previous_fitness);
+	fputc('\n', out);
+}
+
+static void headless_loop(FILE *out, unsigned count, bool forever)
+{
+	for(unsigned tick = 0; generation < count || forever; tick++) { /**@todo allow user to issues commands?*/
+		if(tick > max_ticks_per_generation) {
+			fprintf(out, "generation: %u\nfitness:    ", generation);
+			print_fitness(out, gladiators, arena_gladiator_count);
+			new_generation();
+			fprintf(out, "            ");
+			print_fitness(out, gladiators, arena_gladiator_count);
+			tick = 0;
+			generation++;
+		}
+		update_scene();
+	}
 }
 
 void usage(const char *arg_0)
@@ -510,8 +454,6 @@ When running there are a few commands that can issued:\n\
 
 int main(int argc, char **argv)
 {
-	char *glut_argv[] = { argv[0], NULL };
-	int glut_argc = 0;
 
 	bool log_level_set = false;
 	int log_level = program_log_level;
@@ -544,20 +486,12 @@ done:
 		program_log_level = log_level;
 
 	initialize_arena();
-	glutInit(&glut_argc, glut_argv);
-	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH );
-	glutInitWindowPosition(window_x_starting_position, window_y_starting_position);
-	glutInitWindowSize(window_width, window_height);
-	glutCreateWindow("Gladiators");
 
-	initialize_rendering();
-
-	glutKeyboardFunc(keyboard_handler);
-	glutSpecialFunc(keyboard_special_handler);
-	glutReshapeFunc(resize_window);
-	glutDisplayFunc(draw_scene);
-	glutTimerFunc(arena_tick_ms, timer_callback, 0);
-
-	glutMainLoop();
+	if(program_run_headless) {
+		headless_loop(stdout, 0, true);
+	} else {
+		initialize_rendering(argv[0]);
+		glutMainLoop();
+	}
 	return 0;
 }

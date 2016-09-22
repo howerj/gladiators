@@ -1,4 +1,12 @@
+/** @file       vars.c
+ *  @brief      
+ *  @author     Richard Howe (2016)
+ *  @license    LGPL v2.1 or Later 
+ *              <https://www.gnu.org/licenses/old-licenses/lgpl-2.1.en.html> 
+ *  @email      howe.r.j.89@gmail.com*/
+
 #include "vars.h"
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -26,27 +34,42 @@ CONFIG_X_MACRO
 	{ end_e, NULL, NULL, false }
 };
 
+#define MESSAGE(LEVEL)\
+	do {\
+		if(!verbose(LEVEL))\
+			return;\
+		va_list args;\
+		va_start(args, fmt);\
+		vfprintf(stderr, fmt, args);\
+		va_end(args);\
+		fputc('\n', stderr);\
+	} while(0);
+
 void error(const char *fmt, ...)
 {
-	va_list args;
+	assert(fmt);
 	if(!verbose(ERROR))
-		return;
-	va_start(args, fmt);
-	vfprintf(stderr, fmt, args);
-	va_end(args);
-	fputc('\n', stderr);
+		exit(EXIT_FAILURE);
+	MESSAGE(ERROR);
 	exit(EXIT_FAILURE);
 }
 
 void warning(const char *fmt, ...)
 {
-	va_list args;
-	if(!verbose(WARNING))
-		return;
-	va_start(args, fmt);
-	vfprintf(stderr, fmt, args);
-	va_end(args);
-	fputc('\n', stderr);
+	assert(fmt);
+	MESSAGE(WARNING);
+}
+
+void note(const char *fmt, ...)
+{
+	assert(fmt);
+	MESSAGE(NOTE);
+}
+
+void debug(const char *fmt, ...)
+{
+	assert(fmt);
+	MESSAGE(DEBUG);
 }
 
 bool verbose(verbosity_t v)
@@ -82,6 +105,7 @@ static bool validate_config(void)
 {
 	bool config_is_valid = true;
 	for(int i = 0; db[i].type != end_e; i++) {
+		assert(db[i].addr);
 		bool valid = true;
 		switch(db[i].type) {
 		case double_e:   valid = is_double_valid(&db[i]);   break;
@@ -99,7 +123,7 @@ static bool validate_config(void)
 	return config_is_valid;
 }
 
-size_t find_config_item(const char* item)
+static size_t find_config_item(const char* item)
 {
 	size_t i;
 	for(i = 0; db[i].type != end_e; i++)
@@ -113,7 +137,8 @@ void load_config(void)
 	FILE *in = fopen(default_config_file, "rb");
 	char item[512] = { 0 };
 	if(!in) {
-		warning("configuration file '%s' failed to load: using default values", default_config_file);
+	static const char *msg = "configuration file '%s' failed to load: using default values\nuse '-s' to generate it.";
+		debug(msg, default_config_file);
 		return;
 	}
 
@@ -121,6 +146,7 @@ void load_config(void)
 		size_t i = find_config_item(item);
 		if(db[i].type == end_e)
 			error("unknown configuration item '%s'", item);
+		assert(db[i].addr);
 		unsigned b = 0;
 		switch(db[i].type) {
 		case double_e:   fscanf(in, "%lf\n", (double*)db[i].addr);          break;
@@ -141,7 +167,7 @@ bool save_config_to_default_config_file(void)
 {
 	FILE *out = fopen(default_config_file, "wb");
 	if(!out) {
-		warning("failed to save configuration file '%s'", default_config_file);
+		debug("failed to save configuration file '%s'", default_config_file);
 		return false;
 	}
 	bool r = save_config(out);
@@ -151,7 +177,9 @@ bool save_config_to_default_config_file(void)
 
 bool save_config(FILE *out)
 {
+	assert(out);
 	for(size_t i = 0; db[i].type != end_e; i++) {
+		assert(db[i].addr);
 		switch(db[i].type) {
 		case double_e:   fprintf(out, "%s %f\n", db[i].name, *(double*)db[i].addr);   break;
 		case bool_e:     fprintf(out, "%s %u\n", db[i].name, *(bool*)db[i].addr);     break;

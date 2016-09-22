@@ -6,3 +6,4 @@ vgcore.*
 *.d
 *.log
 *.conf
+*.out

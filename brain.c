@@ -114,13 +114,13 @@ static double mutation(double original, size_t length, unsigned *count)
 	return original;
 }
 
-static void neuron_mutate(neuron_t *n, unsigned *count)
+static void neuron_mutate(neuron_t *n, size_t depth, unsigned *count)
 {
 	assert(n && count);
-	n->bias = mutation(n->bias, n->weight_count, count);
-	n->threshold = mutation(n->bias, n->weight_count, count);
+	n->bias = mutation(n->bias, n->weight_count*depth, count);
+	n->threshold = mutation(n->bias, n->weight_count*depth, count);
 	for(size_t i = 0; i < n->weight_count; i++)
-		n->weights[i] = mutation(n->weights[i], n->weight_count, count);
+		n->weights[i] = mutation(n->weights[i], n->weight_count*depth, count);
 }
 
 static void neuron_print(FILE *output, neuron_t *n)
@@ -201,7 +201,6 @@ void update_layer(layer_t *l, const double inputs[], size_t in_length)
 
 void brain_update(brain_t *b, const double inputs[], size_t in_length, double outputs[], size_t out_length)
 {
-	assert(b->length > in_length && b->length > out_length);
 	for(size_t i = 0; i < in_length; i++)
 		b->inputs[i] = inputs[i];
 	update_layer(b->layers[0], b->inputs, in_length);
@@ -211,11 +210,11 @@ void brain_update(brain_t *b, const double inputs[], size_t in_length, double ou
 		outputs[i] = b->layers[b->depth - 1]->outputs[i];
 }
 
-static void layer_mutate(layer_t *l, unsigned *count)
+static void layer_mutate(layer_t *l, size_t depth, unsigned *count)
 {
 	assert(l && count);
 	for(size_t i = 0; i < l->length; i++)
-		neuron_mutate(l->neurons[i], count);
+		neuron_mutate(l->neurons[i], depth, count);
 }
 
 unsigned brain_mutate(brain_t *b)
@@ -223,7 +222,7 @@ unsigned brain_mutate(brain_t *b)
 	assert(b);
 	unsigned mutations = 0;
 	for(size_t i = 1; i < b->depth; i++)
-		layer_mutate(b->layers[i], &mutations);
+		layer_mutate(b->layers[i], b->depth, &mutations);
 	return mutations;
 }
 

@@ -26,7 +26,6 @@ typedef struct prng_t prng_t;
 
 void *allocate(size_t sz)
 {
-	assert(sz);
 	void *r = calloc(sz, 1);
 	if(!r)
 		error("allocation failed of size %zu\n", sz);
@@ -158,7 +157,7 @@ double shape_to_sides(shape_t shape)
 	};
 	if(shape > INVALID_SHAPE)
 		error("invalid shape '%d'", shape);
-	return sides[shape];
+	return sides[shape % INVALID_SHAPE];
 }
 
 void draw_regular_polygon_filled(double x, double y, double orientation, double radius, shape_t shape, color_t color)
@@ -357,11 +356,19 @@ double wrap_or_limit_y(double y)
 	return y;
 }
 
-double wraprad(double rad)
+double wrap_rad(double rad)
 { /* https://stackoverflow.com/questions/11980292/how-to-wrap-around-a-range */
 	rad = fmod(rad, 2.0 * PI);
 	if (rad < 0.0)
 		rad += 2.0 * PI;
 	return rad;
+}
+
+bool tick_timer(tick_timer_t *t)
+{
+	if(t->i > t->max)
+		return true;
+	t->i++;
+	return false;
 }
 

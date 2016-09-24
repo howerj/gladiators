@@ -5,6 +5,8 @@
  *              <https://www.gnu.org/licenses/old-licenses/lgpl-2.1.en.html> 
  *  @email      howe.r.j.89@gmail.com*/
 
+/**@todo draw arc and draw cross */
+
 #ifndef UTIL_H
 #define UTIL_H
 
@@ -47,6 +49,11 @@ typedef struct { /**@note it might be worth translating some functions to use po
 	double x, y;
 } point_t;
 
+typedef struct {
+	unsigned i;
+	unsigned max;
+} tick_timer_t;
+
 void *allocate(size_t sz);
 double rad2deg(double rad);
 double deg2rad(double deg);
@@ -66,8 +73,9 @@ void draw_rectangle(double x, double y, double width, double height, color_t col
 
 double wrap_or_limit_x(double x);
 double wrap_or_limit_y(double y);
-double wraprad(double rad);
+double wrap_rad(double rad);
 
 color_t team_to_color(unsigned team);
+bool tick_timer(tick_timer_t *t);
 
 #endif

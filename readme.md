@@ -8,25 +8,12 @@ This program is intended to be a simple simulator for a battle arena where
 compete, this arena is combined with genetic algorithms to improve the AI. This
 is a toy project.
 
-## To Do
+The idea is to get the program to a stage where it can evolve a gladiator that
+can move around, hunt for food, kill enemy gladiators and doge projectiles.
 
-### Plan
-
-* Tweak Algorithm
-
-### Misc
-
-* Documentation/Tutorial
-* Add human player gladiator
-* Experiment with feeding in different information into the 'gladiators'
-  - For example, state about themselves could be input
-  - Feedback/Internal state for the neural network
-* The genetic code for a gladiator could also specify its turn rate, speed,
-health, etcetera. There would be a budget that for these that cannot be
-exceeded. Alternatively different AIs could be generated for each gladiator
-profile.
-* Inertia needs to be added to the physics engine
-* Minimap and window
+Many of the parameter are configurable, so the food game mechanic can be
+disabled for example, this changes the direction in which the gladiators can
+evolve.
 
 ## References
 

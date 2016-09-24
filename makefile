@@ -1,5 +1,5 @@
 LDFLAGS  = -lglut -lGL -lm
-CFLAGS   = -std=c99 -Wall -Wextra -g
+CFLAGS   = -std=c99 -Wall -Wextra -g -O2
 RM      := rm
 SOURCES := ${wildcard *.c}
 OBJECTS := ${SOURCES:%.c=%.o}

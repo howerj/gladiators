@@ -21,4 +21,7 @@ void brain_update(brain_t *b, const double inputs[], size_t in_length, double ou
 unsigned brain_mutate(brain_t *b);
 void brain_print(FILE *output, brain_t *b);
 
+int brain_save(FILE *output);
+int brain_load(FILE *input);
+
 #endif

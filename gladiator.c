@@ -15,6 +15,33 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
+static const char *gladiator_input_names[] = {
+#define X(ENUM, DESCRIPTION) DESCRIPTION,
+	X_MACRO_GLADIATOR_INPUTS
+#undef X
+};
+
+static const char *gladiator_output_names[] = {
+#define X(ENUM, DESCRIPTION) DESCRIPTION,
+	X_MACRO_GLADIATOR_INPUTS
+#undef X
+};
+
+const char *lookup_gladiator_io_name(bool lookup_input, unsigned port)
+{
+	if(lookup_input) {
+		if(port >= GLADIATOR_IN_LAST_INPUT)
+			error("'%u' is not a valid gladiator input port");
+		return gladiator_input_names[port];
+	} else {
+		if(port >= GLADIATOR_OUT_LAST_OUTPUT)
+			error("'%u' is not a valid gladiator output port");
+		return gladiator_output_names[port];
+	}
+	return NULL;
+}
+
+
 static void update_field_of_view(gladiator_t *g, double outputs[])
 {
 	assert(g && outputs);
@@ -27,9 +54,9 @@ static void update_field_of_view(gladiator_t *g, double outputs[])
 static void update_orientation(gladiator_t *g, double outputs[])
 {
 	assert(g && outputs);
-	g->orientation  += wraprad(outputs[GLADIATOR_OUT_TURN_LEFT]) / gladiator_turn_rate_divisor; 
-	g->orientation  -= wraprad(outputs[GLADIATOR_OUT_TURN_RIGHT]) / gladiator_turn_rate_divisor;
-	g->orientation   = wraprad(g->orientation);
+	g->orientation  += wrap_rad(outputs[GLADIATOR_OUT_TURN_LEFT]) / gladiator_turn_rate_divisor; 
+	g->orientation  -= wrap_rad(outputs[GLADIATOR_OUT_TURN_RIGHT]) / gladiator_turn_rate_divisor;
+	g->orientation   = wrap_rad(g->orientation);
 }
 
 static void update_distance(gladiator_t *g, double outputs[])
@@ -41,6 +68,13 @@ static void update_distance(gladiator_t *g, double outputs[])
 	g->x = wrap_or_limit_x(g->x);
 	g->y += distance * sin(g->orientation);
 	g->y = wrap_or_limit_y(g->y);
+
+	if(gladiator_bounce_off_walls) {
+		if(g->y == Ymax || g->y == Ymin)
+			g->orientation = wrap_rad(-(g->orientation));
+		if(g->x == Xmax || g->x == Xmin)
+			g->orientation = wrap_rad(-(g->orientation + PI));
+	}
 }
 
 bool gladiator_is_dead(gladiator_t *g)
@@ -58,6 +92,7 @@ void gladiator_update(gladiator_t *g, const double inputs[], double outputs[])
 		g->energy += gladiator_energy_increment;
 	g->enemy_gladiator_detected  = inputs[GLADIATOR_IN_VISION_ENEMY] > 0.0;
 	g->enemy_projectile_detected = inputs[GLADIATOR_IN_VISION_PROJECTILE] > 0.0;
+	g->food_detected = inputs[GLADIATOR_IN_VISION_FOOD] > 0.0;
 
 	brain_update(g->brain, inputs, GLADIATOR_IN_LAST_INPUT, outputs, GLADIATOR_OUT_LAST_OUTPUT);
 
@@ -65,11 +100,20 @@ void gladiator_update(gladiator_t *g, const double inputs[], double outputs[])
 	update_field_of_view(g, outputs);
 	update_orientation(g, outputs);
 	update_distance(g, outputs);
+	if(arena_wraps_at_edges == false && (g->x == Xmax || g->x == Xmin || g->y == Ymax || g->y == Ymin))
+		tick_timer(&g->wall_contact_timer);
+
 }
 
 void gladiator_draw(gladiator_t *g)
 {
 	assert(g);
+	/**@todo draw gladiator inputs as "eyes" on the gladiator*/
+	color_t food = g->food_detected ? BLUE : GREEN;
+	draw_regular_polygon_filled(g->x, g->y, g->orientation, g->radius/4, CIRCLE, food);
+	draw_regular_polygon_filled(g->x, g->y, g->orientation, g->radius/2, CIRCLE, g->health > 0 ? WHITE : BLACK);
+	draw_regular_polygon_filled(g->x, g->y, g->orientation, g->radius, PENTAGON, team_to_color(g->team));
+
 	color_t projectile = g->enemy_projectile_detected ? RED : GREEN;
 	draw_line(g->x, g->y, g->orientation, g->radius*2, g->radius/2, projectile);
 	if(!gladiator_is_dead(g) && draw_gladiator_target_lines) {
@@ -77,8 +121,6 @@ void gladiator_draw(gladiator_t *g)
 		draw_line(g->x, g->y, g->orientation - g->field_of_view/2, Ymax/5, g->radius/2, target);
 		draw_line(g->x, g->y, g->orientation + g->field_of_view/2, Ymax/5, g->radius/2, target);
 	}
-	draw_regular_polygon_filled(g->x, g->y, g->orientation, g->radius/2, CIRCLE, g->health > 0 ? WHITE : BLACK);
-	draw_regular_polygon_filled(g->x, g->y, g->orientation, g->radius, PENTAGON, team_to_color(g->team));
 }
 
 gladiator_t *gladiator_new(unsigned team, double x, double y, double orientation)
@@ -119,8 +161,8 @@ gladiator_t *gladiator_copy(gladiator_t *g)
 	gladiator_t *n = gladiator_new(g->team, g->x, g->y, g->orientation);
 	brain_delete(n->brain);
 	n->state1 = g->state1;
+	n->fitness = g->fitness;
 	n->total_mutations = g->total_mutations;
-	n->previous_fitness = g->previous_fitness;
 	n->brain = brain_copy(g->brain);
 	return n;
 }
@@ -132,6 +174,8 @@ double gladiator_fitness(gladiator_t *g)
 	fitness += g->health * fitness_weight_health;
 	fitness += g->hits   * fitness_weight_hits;
 	fitness += g->energy * fitness_weight_energy;
+	fitness += g->foods  * fitness_weight_food;
+	fitness += tick_timer(&g->wall_contact_timer) * fitness_weight_wall_time;
 	/*fitness += ((arena_gladiator_count / (g->rank + 1)) - 1) * fitness_weight_rank;*/
 	return fitness;
 }

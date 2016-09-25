@@ -3,9 +3,7 @@
  *  @author     Richard Howe (2016)
  *  @license    LGPL v2.1 or Later 
  *              <https://www.gnu.org/licenses/old-licenses/lgpl-2.1.en.html> 
- *  @email      howe.r.j.89@gmail.com
- *  @todo       make calculate_response configurable, so we can use different
- *              functions in its palce*/
+ *  @email      howe.r.j.89@gmail.com */
 #include "brain.h"
 #include "util.h"
 #include "vars.h"
@@ -123,29 +121,40 @@ static void neuron_mutate(neuron_t *n, size_t depth, unsigned *count)
 		n->weights[i] = mutation(n->weights[i], n->weight_count*depth, count);
 }
 
-static void neuron_print(FILE *output, neuron_t *n)
+static int neuron_save(FILE *output, neuron_t *n)
 {
-	fprintf(output, "\tlength:  %zu\n", n->weight_count);
-	fprintf(output, "\tbias:    %f\n",  n->bias);
-	fprintf(output, "\tweights:\n");
+	fprintf(output, "bias      %f\n",  n->bias);
+	fprintf(output, "threshold %f\n",  n->threshold);
+	fprintf(output, "weights   ");
 	for(size_t i = 0; i < n->weight_count; i++)
-		fprintf(output, "\t\t%f\n", n->weights[i]);
+		if(fprintf(output, "%f ", n->weights[i]) < 0)
+			return -1;
+	fputc('\n', output);
+	return 0;
 }
 
-static void layer_print(FILE *output, unsigned depth, layer_t *layer)
+static int layer_save(FILE *output, layer_t *layer)
 {
 	assert(output && layer);
-	fprintf(output, "\tlayer %d:\n", depth);
-	for(size_t i = 0; i < layer->length; i++)
-		neuron_print(output, layer->neurons[i]);
+	for(size_t i = 0; i < layer->length; i++) {
+		fprintf(output, "neuron    %zu\n", i);
+		if(neuron_save(output, layer->neurons[i]) < 0)
+			return -1;
+	}
+	return 0;
 }
 
-void brain_print(FILE *output, brain_t *b)
+int brain_save(FILE *output, brain_t *b)
 {
 	assert(output && b);
-	fprintf(output, "brain:\n");
-	for(size_t i = 0; i < b->depth; i++)
-		layer_print(output, i, b->layers[i]);
+	if(fprintf(output, "brain %zu %zu\n", b->depth, b->length) < 0)
+		return -1;
+	for(size_t i = 0; i < b->depth; i++) {
+		fprintf(output, "layer     %zu\n", i);
+		if(layer_save(output, b->layers[i]) < 0)
+			return -1;
+	}
+	return 0;
 }
 
 brain_t *brain_new(bool rand, size_t length, size_t depth)
@@ -159,7 +168,7 @@ brain_t *brain_new(bool rand, size_t length, size_t depth)
 	for(size_t i = 0; i < b->depth; i++)
 		b->layers[i] = layer_new(rand, length);
 	if(verbose(DEBUG) && rand)
-		brain_print(stdout, b);
+		brain_save(stdout, b);
 	return b;
 }
 
@@ -185,10 +194,20 @@ void brain_delete(brain_t *b)
 static double calculate_response(neuron_t *n, const double in[], size_t length) 
 {    /* see http://www.cs.bham.ac.uk/~jxb/NN/nn.html*/
 	assert(n && in && length);
-	double total = n->bias;
-	for(size_t i = 0; i < length; i++)
-		total += in[i] * n->weights[i];
-	return 1.0 / (1.0 + exp(-total));
+
+	switch(brain_neuron_calculation_method) {
+	case 0: 
+	{ /**@todo add in other calculation methods*/
+		double total = n->bias;
+		for(size_t i = 0; i < length; i++)
+			total += in[i] * n->weights[i];
+		return 1.0 / (1.0 + exp(-total));
+	}
+	default:
+		break;
+	}
+	error("invalid calculation method: %u", brain_neuron_calculation_method);
+	return 0.0;
 }
 
 void update_layer(layer_t *l, const double inputs[], size_t in_length)
@@ -221,8 +240,35 @@ unsigned brain_mutate(brain_t *b)
 {
 	assert(b);
 	unsigned mutations = 0;
-	for(size_t i = 1; i < b->depth; i++)
+	for(size_t i = 0; i < b->depth; i++)
 		layer_mutate(b->layers[i], b->depth, &mutations);
 	return mutations;
+}
+
+layer_t *layer_load(FILE *input, size_t length)
+{
+	UNUSED(input);
+	UNUSED(length);
+	/**@todo implement this; layer_load*/
+	return NULL;
+}
+
+brain_t *brain_load(FILE *input)
+{
+	size_t depth = 0, length = 0;
+	fscanf(input, "brain %zu %zu\n", &depth, &length);
+	brain_t *b = brain_new(false, depth, length);
+	return b;
+}
+
+brain_t *brain_crossover(brain_t *a, brain_t *b)
+{
+	assert(a && b);
+	assert(a->depth == b->depth && a->length == b->length);
+	brain_t *c = NULL;
+	
+	/**@todo implement this; brain_crossover*/
+
+	return c;
 }
 

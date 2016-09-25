@@ -4,10 +4,9 @@
  *  @license    LGPL v2.1 or Later 
  *              <https://www.gnu.org/licenses/old-licenses/lgpl-2.1.en.html> 
  *  @email      howe.r.j.89@gmail.com
- *  @todo use fewer static scope variables in this file, pass by stack instead
  *  @todo structures for Cartesian and Polar coordinates
  *  @todo allow the arena to be larger than the screen, and add a minimap
- *  @todo add a player object (gladiator, but human controlled)
+ *  @todo add a player object (gladiator, but human controlled), and player led selection
  *  @todo comment files, change LICENSE */
 
 #include "util.h"
@@ -32,11 +31,12 @@ typedef struct {
 	size_t gladiator_count;
 	size_t projectile_count;
 	size_t food_count;
+	unsigned generation;
 } world_t;
 
 world_t *world;
 
-static unsigned generation = 0, tick = 0;
+static unsigned tick = 0;
 static bool step = false;
 static unsigned alive;
 
@@ -174,6 +174,7 @@ static bool detect_food_collision(world_t *world, gladiator_t *g)
 		if(hit) {
 			g->foods++;
 			g->energy += food_nourishment;
+			g->health += food_health;
 			if(food_respawns) {
 				f->x = random_x();
 				f->y = random_x();
@@ -264,15 +265,18 @@ static bool detect_food(world_t *w, gladiator_t *k)
 static void update_gladiator_inputs(world_t *w, gladiator_t *g, double inputs[])
 {
 	assert(g && inputs);
+	/**@todo these inputs might need changing, especially the vision ones,
+	 * a direction could be given, whether the target appears in the left
+	 * or the right hand field of view...*/
 	inputs[GLADIATOR_IN_CAN_FIRE]          = g->energy > projectile_energy_cost;
-	inputs[GLADIATOR_IN_FIELD_OF_VIEW]     = g->field_of_view;
+	inputs[GLADIATOR_IN_FIELD_OF_VIEW]     = g->field_of_view / gladiator_max_field_of_view;
 	inputs[GLADIATOR_IN_VISION_FOOD]       = detect_food(w, g);
 	inputs[GLADIATOR_IN_VISION_PROJECTILE] = detect_enemy_projectile(w, g);
 	inputs[GLADIATOR_IN_VISION_ENEMY]      = detect_enemy_gladiator(w, g);
 	inputs[GLADIATOR_IN_RANDOM]            = random_float();
-	inputs[GLADIATOR_IN_X]                 = g->x;
-	inputs[GLADIATOR_IN_Y]                 = g->y;
-	inputs[GLADIATOR_IN_ORIENTATION]       = g->orientation;
+	inputs[GLADIATOR_IN_X]                 = g->x / Xmax;
+	inputs[GLADIATOR_IN_Y]                 = g->y / Ymax;
+	inputs[GLADIATOR_IN_ORIENTATION]       = g->orientation / (2*PI);
 	inputs[GLADIATOR_IN_STATE1]            = g->state1;
 	inputs[GLADIATOR_IN_COLLISION_ENEMY]   = detect_gladiator_collision(w, g);
 
@@ -332,7 +336,7 @@ static void draw_debug_info(world_t *w)
 		return;
 	textbox_t t = { .x = Xmin + Xmax/40, .y = Ymax - Ymax/40, .draw_box = false, .color_text = WHITE };
 
-	fill_textbox(&t, print_generation,        "generation: %u", generation);
+	fill_textbox(&t, print_generation,        "generation: %u", w->generation);
 	fill_textbox(&t, print_arena_tick,        "tick:       %u", tick);
 	fill_textbox(&t, print_fps,               "fps:        %f", fps());
 	fill_textbox(&t, print_gladiators_alive,  "alive:      %u/%u", alive, w->gladiator_count);
@@ -385,6 +389,8 @@ static void new_generation(gladiator_t **gs, size_t count)
 		gs[0] = gladiator_copy(strongest);
 	}
 
+	/*brain_save(stdout, gs[count - 1]->brain);*/
+
 	for(size_t i = 0; i < count - 1; i++) {
 		gs[i]->mutations = gladiator_mutate(gs[i]);
 		gs[i]->total_mutations += gs[i]->mutations;
@@ -431,7 +437,7 @@ static void draw_scene(void)
 
 			new_generation(world->gs, world->gladiator_count);
 			tick = 0;
-			generation++;
+			world->generation++;
 			arena_paused = program_pause_after_new_generation;
 		}
 		step = false;
@@ -459,15 +465,24 @@ static world_t *initialize_arena(size_t gladiator_and_projectile_count, size_t f
 	w->ps = allocate(sizeof(w->ps[0]) * gladiator_and_projectile_count);
 	w->fs = allocate(sizeof(w->fs[0]) * food_count);
 
-	for(size_t i = 0; i < gladiator_and_projectile_count; i++) {
-		/**@todo add in a non random mode */
-		w->gs[i] = gladiator_new(i, random_x(), random_y(), random_angle());
-		w->ps[i] = projectile_new(i, 0, 0, 0);
+	if(arena_random_gladiator_start) {
+		for(size_t i = 0; i < gladiator_and_projectile_count; i++) {
+			w->gs[i] = gladiator_new(i, random_x(), random_y(), random_angle());
+			w->ps[i] = projectile_new(i, 0, 0, 0);
+		}
+	} else { /* non random start; gladiators facing outwards in a circle */
+		double radius = sqrt(Xmax * Ymax) / 4;
+		unsigned j = 0;
+		for(double i = 0; i < 2.0 * PI; i += (2.0 * PI) / gladiator_and_projectile_count, j++) {
+			double x = (cos(i) * radius) + Xmax / 2;
+			double y = (sin(i) * radius) + Ymax / 2;
+			w->gs[j] = gladiator_new(j, x, y, wrap_rad(i ));
+			w->ps[j] = projectile_new(j, 0, 0, 0);
+		}
 	}
 
 	for(size_t i = 0; i < w->food_count; i++)
 		w->fs[i] = food_new(random_x(), random_y(), random_angle());
-
 	return w;
 }
 
@@ -503,29 +518,29 @@ static void print_fitness(FILE *out, gladiator_t **g, size_t count)
 	fputc('\n', out);
 }
 
-static void headless_loop(world_t *world, FILE *out, unsigned count, bool forever)
+static void headless_loop(world_t *w, FILE *out, unsigned count, bool forever)
 {
-	for(unsigned tick = 0; generation < count || forever; tick++) { /**@todo allow user to issues commands?*/
+	for(unsigned tick = 0; w->generation < count || forever; tick++) {
 		if(tick > max_ticks_per_generation) {
-			update_fitness(world->gs, world->gladiator_count);
+			update_fitness(w->gs, w->gladiator_count);
 
-			fprintf(out, "generation: %u\n", generation);
+			fprintf(out, "generation: %u\n", w->generation);
 			fprintf(out, "fitness:    ");
-			print_fitness(out, world->gs, world->gladiator_count);
+			print_fitness(out, w->gs, w->gladiator_count);
 
-			for(size_t i = 0; i < world->projectile_count; i++)
-				projectile_deactivate(world->ps[i]);
-			alive = world->gladiator_count;
+			for(size_t i = 0; i < w->projectile_count; i++)
+				projectile_deactivate(w->ps[i]);
+			alive = w->gladiator_count;
 
-			new_generation(world->gs, world->gladiator_count);
+			new_generation(w->gs, w->gladiator_count);
 
 			fprintf(out, "            ");
-			print_fitness(out, world->gs, world->gladiator_count);
+			print_fitness(out, w->gs, w->gladiator_count);
 
 			tick = 0;
-			generation++;
+			w->generation++;
 		}
-		update_scene(world);
+		update_scene(w);
 	}
 }
 
@@ -537,7 +552,7 @@ void usage(const char *arg_0)
 void help(void)
 {
 	static const char help[] = "\
-gladiators: fight and evolve a neural network controlled gladiator\n\
+arena: fight and evolve a neural network controlled gladiator\n\
 \n\
 This is a simple toy program designed to display a series of 'gladiators'\n\
 that can fire at and evade each other.\n\
@@ -547,8 +562,9 @@ that can fire at and evade each other.\n\
 \t-s  save the default configuration file and exit\n\
 \t-p  print out the default configuration to stdout and exit\n\
 \t-h  print this help message and exit\n\
+\t-H  run without the GUI, or run in 'headless' mode\n\
 \n\
-When running there are a few commands that can issued:\n\
+When running in GUI mode there are a few commands that can issued:\n\
 \n\
 \t'p' pause the simulation\n\
 \t'r' resume the simulation after it is paused\n\
@@ -564,9 +580,9 @@ int main(int argc, char **argv)
 
 	bool log_level_set = false;
 	int log_level = program_log_level;
+	bool run_headless = false;
 
 	int i;
-	/**@todo add options for running in headerless mode*/
 	for(i = 1; i < argc && argv[i][0] == '-'; i++)
 		switch(argv[i][1]) {
 		case '\0': /* stop argument processing */
@@ -580,16 +596,21 @@ int main(int argc, char **argv)
 			return !save_config_to_default_config_file();
 		case 'p':
 			return save_config(stdout);
+		case 'H': 
+			run_headless = true;
+			break;
 		case 'h': 
 			usage(argv[0]); 
 			help();
 			return EXIT_SUCCESS; 
 		default:
-			error("invalid argument '%s'", argv[i][1]);
+			error("invalid argument '%c'", argv[i][1]);
 		}
 done:
 	load_config();
 
+	if(run_headless)
+		program_run_headless = true;
 	if(log_level_set)
 		program_log_level = log_level;
 

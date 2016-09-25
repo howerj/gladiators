@@ -45,8 +45,7 @@ static inline quadrant_e quadrant(double angle)
 	return r;
 }
 
-/* @todo move to separate file
- * see: https://stackoverflow.com/questions/1073336/circle-line-segment-collision-detection-algorithm */
+/* see: https://stackoverflow.com/questions/1073336/circle-line-segment-collision-detection-algorithm */
 bool detect_line_circle_intersection(
 		double orientation, bool use_orientation,
 		double Ax, double Ay,

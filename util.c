@@ -91,6 +91,53 @@ void draw_line(double x, double y, double angle, double magnitude, double thickn
 	glPopMatrix();
 }
 
+void draw_cross(double x, double y, double angle, double magnitude, double thickness, color_t color)
+{
+	double xn, yn;
+	if(program_run_headless)
+		return;
+	xn = x-cos(angle)*(magnitude/2);
+	yn = y-sin(angle)*(magnitude/2);
+	draw_line(xn, yn, angle, magnitude, thickness, color);
+	xn = x-cos(angle+PI/2)*(magnitude/2);
+	yn = y-sin(angle+PI/2)*(magnitude/2);
+	draw_line(xn, yn, angle+PI/2, magnitude, thickness, color);
+}
+
+static void _draw_arc(double x, double y, double angle, double magnitude, double arc, bool lines, double thickness, color_t color)
+{
+	if(program_run_headless)
+		return;
+	glMatrixMode(GL_MODELVIEW);
+	glPushMatrix();
+		glLoadIdentity();
+		glTranslated(x, y, 0.0);
+		glRotated(rad2deg(angle), 0, 0, 1);
+		set_color(color);
+		if(lines) {
+			glLineWidth(thickness);
+			glBegin(GL_LINE_LOOP);
+		} else {
+			glBegin(GL_POLYGON);
+		}
+			glVertex3d(0, 0, 0.0);
+			for(double i = 0; i < arc; i += arc / 24.0)
+				glVertex3d(cos(i) * magnitude, sin(i) * magnitude, 0.0);
+		glEnd();
+	glPopMatrix();
+
+}
+
+void draw_arc_filled(double x, double y, double angle, double magnitude, double arc, color_t color)
+{
+	return _draw_arc(x, y, angle, magnitude, arc, false, 0, color);
+}
+
+void draw_arc_line(double x, double y, double angle, double magnitude, double arc, double thickness, color_t color)
+{
+	return _draw_arc(x, y, angle, magnitude, arc, true, thickness, color);
+}
+
 /* see: https://www.opengl.org/discussion_boards/showthread.php/160784-Drawing-Circles-in-OpenGL */
 static void _draw_regular_polygon(
 		double x, double y, 
@@ -119,7 +166,7 @@ static void _draw_regular_polygon(
 	glPopMatrix();
 }
 
-void draw_rectangle(double x, double y, double width, double height, color_t color, bool lines, double thickness)
+static void _draw_rectangle(double x, double y, double width, double height, bool lines, double thickness, color_t color)
 {
 	if(program_run_headless)
 		return;
@@ -141,6 +188,18 @@ void draw_rectangle(double x, double y, double width, double height, color_t col
 		glEnd();
 	glPopMatrix();
 }
+
+void draw_rectangle_filled(double x, double y, double width, double height, color_t color)
+{
+	return _draw_rectangle(x, y, width, height, false, 0, color); 
+}
+
+void draw_rectangle_line(double x, double y, double width, double height, double thickness, color_t color)
+{
+	return _draw_rectangle(x, y, width, height, true, thickness, color); 
+}
+
+
 
 double shape_to_sides(shape_t shape)
 {
@@ -325,7 +384,7 @@ void draw_textbox(textbox_t *t)
 	if(!(t->draw_box) || program_run_headless)
 		return;
 	/**@todo fix this */
-	draw_rectangle(t->x, t->y-t->height, t->width, t->height, t->color_box, true, 0.5);
+	draw_rectangle_line(t->x, t->y-t->height, t->width, t->height, 0.5, t->color_box);
 }
 
 double wrap_or_limit_x(double x)
@@ -370,5 +429,10 @@ bool tick_timer(tick_timer_t *t)
 		return true;
 	t->i++;
 	return false;
+}
+
+bool tick_result(tick_timer_t *t)
+{
+	return t->i > t->max;
 }
 

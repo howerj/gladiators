@@ -63,7 +63,8 @@ static void update_distance(gladiator_t *g, double outputs[])
 {
 	assert(g && outputs);
 	/**@todo add inertia */
-	const double distance = gladiator_distance_per_tick * outputs[GLADIATOR_OUT_MOVE_FORWARD];
+	double distance = gladiator_distance_per_tick * outputs[GLADIATOR_OUT_MOVE_FORWARD];
+	distance = MAX(0, MIN(gladiator_distance_per_tick, distance));
 	g->x += distance * cos(g->orientation);
 	g->x = wrap_or_limit_x(g->x);
 	g->y += distance * sin(g->orientation);
@@ -175,8 +176,16 @@ double gladiator_fitness(gladiator_t *g)
 	fitness += g->hits   * fitness_weight_hits;
 	fitness += g->energy * fitness_weight_energy;
 	fitness += g->foods  * fitness_weight_food;
-	fitness += tick_timer(&g->wall_contact_timer) * fitness_weight_wall_time;
+	fitness += tick_result(&g->wall_contact_timer) * fitness_weight_wall_time;
 	/*fitness += ((arena_gladiator_count / (g->rank + 1)) - 1) * fitness_weight_rank;*/
 	return fitness;
+}
+
+gladiator_t *gladiator_breed(gladiator_t *a, gladiator_t *b)
+{
+	gladiator_t *child = gladiator_new(a->team, 0, 0, 0);
+	brain_delete(child->brain);
+	child->brain = brain_crossover(a->brain, b->brain);
+	return child;
 }
 

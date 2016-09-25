@@ -25,11 +25,13 @@ typedef enum {
  * @todo A GUI menu system could be created from this list, potentially*/
 #define CONFIG_X_MACRO\
 	X(unsigned,  arena_food_count,                   4,       false)\
-	X(unsigned,  arena_gladiator_count,              5,       false)\
+	X(unsigned,  arena_gladiator_count,              3,       false)\
 	X(bool,      arena_paused,                       false,   true)\
 	X(double,    arena_tick_ms,                      15.0,    true)\
 	X(bool,      arena_wraps_at_edges,               false,   true)\
+	X(bool,      arena_random_gladiator_start,       true,    true)\
 	X(double,    brain_max_weight_increment,         2.0,     false)\
+	X(unsigned,  brain_neuron_calculation_method,    0,       true)\
 	X(double,    detection_lines,                    100.0,   false)\
 	X(bool,      draw_gladiator_collision,           true,    true)\
 	X(bool,      draw_gladiator_target_lines,        true,    true)\
@@ -37,34 +39,35 @@ typedef enum {
 	X(bool,      draw_line_circle_collision,         false,   true)\
 	X(bool,      draw_line_circle_debug_line,        false,   true)\
 	X(double,    fitness_weight_energy,              0.0,     true)\
+	X(double,    fitness_weight_food,                1.0,     true)\
 	X(double,    fitness_weight_health,              1.5,     true)\
 	X(double,    fitness_weight_hits,                1.0,     true)\
 	X(double,    fitness_weight_rank,                0.5,     true)\
-	X(double,    fitness_weight_food,                1.0,     true)\
 	X(double,    fitness_weight_wall_time,          -1.0,     true)\
-	X(double,    food_size,                          1.0,     false)\
-	X(double,    food_nourishment,                   150.0,   true)\
-	X(double,    food_distance_per_tick,             0.01,    true)\
+	X(bool,      food_active,                        false,    true)\
 	X(unsigned,  food_control_method,                1,       true)\
-	X(bool,      food_active,                        true,    true)\
+	X(double,    food_distance_per_tick,             0.01,    true)\
+	X(double,    food_health,                        0.0,     true)\
+	X(double,    food_nourishment,                   150.0,   true)\
 	X(bool,      food_respawns,                      true,    true)\
-	X(unsigned,  gladiator_brain_depth,              2,       false)\
+	X(double,    food_size,                          1.0,     false)\
 	X(unsigned,  gladiator_bounce_off_walls,         false,   true)\
+	X(unsigned,  gladiator_brain_depth,              2,       false)\
 	X(unsigned,  gladiator_brain_length,             10,      false)\
 	X(double,    gladiator_distance_per_tick,        1.0,     true)\
 	X(double,    gladiator_energy_increment,         1.0,     true)\
-	X(double,    gladiator_field_of_view_divisor,    32.00,   false)\
+	X(double,    gladiator_field_of_view_divisor,    5.00,    false)\
 	X(double,    gladiator_fire_threshold,           0.50,    true)\
 	X(double,    gladiator_fire_timeout,             15.0,    true)\
 	X(double,    gladiator_health,                   2.0,     true)\
 	X(double,    gladiator_max_energy,               8000.0,  false)\
 	X(double,    gladiator_max_field_of_view,        1.0,     true)\
-	X(double,    gladiator_min_field_of_view,        0.05,    true)\
+	X(double,    gladiator_min_field_of_view,        0.15,    true)\
 	X(double,    gladiator_size,                     3.0,     false)\
-	X(double,    gladiator_turn_rate_divisor,        12.0,    false)\
-	X(double,    gladiator_vision,                   120.0,   true)\
-	X(double,    gladiator_wall_time,                100.0,   true)\
 	X(double,    gladiator_starting_energy,          0.0,     true)\
+	X(double,    gladiator_turn_rate_divisor,        12.0,    false)\
+	X(double,    gladiator_vision,                   400.0,   true)\
+	X(double,    gladiator_wall_time,                1000.0,  true)\
 	X(double,    max_ticks_per_generation,           4000.0,  false)\
 	X(double,    mutation_rate,                      0.075,   true)\
 	X(bool,      print_arena_tick,                   true,    true)\
@@ -84,19 +87,19 @@ typedef enum {
 	X(bool,      print_gladiator_total_mutations,    true,    true)\
 	X(bool,      print_gladiator_x,                  false,   true)\
 	X(bool,      print_gladiator_y,                  false,   true)\
-	X(unsigned,  program_headless_loops,             20,      true)\
+	X(unsigned,  program_headless_loops,             50,      true)\
 	X(unsigned,  program_log_level,                  NOTE,    true)\
+	X(bool,      program_pause_after_new_generation, false,   true)\
 	X(double,    program_random_seed,                7.0,     true)\
 	X(bool,      program_run_headless,               false,   true)\
 	X(bool,      program_run_window_after_headless,  true,    true)\
-	X(bool,      program_pause_after_new_generation, false,    true)\
 	X(double,    projectile_damage,                  1.0,     true)\
-	X(double,    projectile_distance_per_tick,       2.0,     true)\
+	X(double,    projectile_distance_per_tick,       2.5,     true)\
 	X(double,    projectile_energy_cost,             150.0,   true)\
-	X(double,    projectile_range,                   250.0,   true)\
-	X(double,    projectile_size,                    1.0,     true)\
-	X(double,    window_height,                      500.0,   true)\
-	X(double,    window_width,                       500.0,   true)\
+	X(double,    projectile_range,                   400.0,   true)\
+	X(double,    projectile_size,                    2.0,     true)\
+	X(double,    window_height,                      400.0,   true)\
+	X(double,    window_width,                       600.0,   true)\
 	X(double,    window_x_starting_position,         60.0,    true)\
 	X(double,    window_y_starting_position,         20.0,    true)\
 	X(double,    Xmax,                               300.0,   false)\

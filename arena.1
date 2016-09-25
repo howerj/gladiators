@@ -1,0 +1,75 @@
+.\" Manpage for small arena game
+.\" Contact howe.r.j.89@gmail.com to correct errors or typos.
+.TH forth 1 "25 Sep 2016" "1.0.0" "Arena man page"
+.SH NAME
+arena \- Fight and evolve neural network controlled gladiators
+.SH SYNOPSIS
+arena [-] [-h] [-v] [-s] [-p] [-H]
+.SH DESCRIPTION
+
+This is a simple toy program designed to display a series of 'gladiators'
+that can fire at and evade each other. The gladiators are controlled by a
+neural network, which gets mutated and bred every generation of gladiators.
+Which gladiators make it into the next round depends on their fitness level
+determined at the end of the current round.
+
+There is a default configuration file called "gladiators.conf", which can be
+regenerated if it is missing. This file will be loaded, if present, after any
+command line arguments have been processed.
+
+.SH OPTIONS
+
+Several options may be given to the program before it becomes a Windowed
+application.
+
+.TP
+.B -
+Stop processing any command line options
+
+.TP
+.B -h
+Print out a help message and exit with an error.
+
+.TP
+.B -v
+Increase the verbosity or log level of the program.
+
+.TP
+.B -s
+Attempt to save a default "gladiators.conf" configuration file to disk, and
+exit.
+
+.TP
+.B -p
+Print the default configuration to stdout(3) and exit.
+
+.TP
+.B -H
+Run in 'headerless' mode, or without a GUI.
+
+.SH EXAMPLES
+
+.B
+	./arena
+
+Run the arena, loading the default configuration file if present from the disk.
+
+.SH COPYRIGHT
+
+This program is distributed under the LGPL 2.1, or optionally any later
+version.
+
+.SH EXIT STATUS
+
+This command returns zero on success and non zero on failure.
+
+.SH SEE ALSO
+
+For more information, see 
+.B https://github.com/howerj/gladiators
+
+.SH BUGS
+This program is a work in progress, the gladiators do not do anything useful at
+the moment.
+.SH AUTHOR
+Richard James Howe (howe.r.j.89@gmail.com)

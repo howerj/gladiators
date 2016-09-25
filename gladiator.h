@@ -81,5 +81,7 @@ double gladiator_fitness(gladiator_t *g);
 unsigned gladiator_mutate(gladiator_t *g);
 bool gladiator_is_dead(gladiator_t *g);
 const char *lookup_gladiator_io_name(bool lookup_input, unsigned port);
+gladiator_t *gladiator_breed(gladiator_t *a, gladiator_t *b);
+
 
 #endif

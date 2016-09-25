@@ -5,8 +5,6 @@
  *              <https://www.gnu.org/licenses/old-licenses/lgpl-2.1.en.html> 
  *  @email      howe.r.j.89@gmail.com*/
 
-/**@todo draw arc and draw cross */
-
 #ifndef UTIL_H
 #define UTIL_H
 
@@ -61,6 +59,11 @@ void set_color(color_t color);
 void draw_regular_polygon_filled(double x, double y, double orientation, double radius, shape_t shape, color_t color);
 void draw_regular_polygon_line(double x, double y, double orientation, double radius, shape_t shape, double thickness, color_t color);
 void draw_line(double x, double y, double angle, double magnitude, double thickness, color_t color);
+void draw_cross(double x, double y, double angle, double magnitude, double thickness, color_t color);
+void draw_arc_filled(double x, double y, double angle, double magnitude, double arc, color_t color);
+void draw_arc_line(double x, double y, double angle, double magnitude, double arc, double thickness, color_t color);
+void draw_rectangle_filled(double x, double y, double width, double height, color_t color);
+void draw_rectangle_line(double x, double y, double width, double height, double thickness, color_t color);
 int draw_text(color_t color, double x, double y, const char *fmt, ...);
 int vdraw_text(color_t color, double x, double y, const char *fmt, va_list ap);
 
@@ -69,7 +72,6 @@ double random_float(void);
 void fill_textbox(textbox_t *t, bool on, const char *fmt, ...);
 void draw_textbox(textbox_t *t);
 
-void draw_rectangle(double x, double y, double width, double height, color_t color, bool lines, double thickness);
 
 double wrap_or_limit_x(double x);
 double wrap_or_limit_y(double y);
@@ -77,5 +79,6 @@ double wrap_rad(double rad);
 
 color_t team_to_color(unsigned team);
 bool tick_timer(tick_timer_t *t);
+bool tick_result(tick_timer_t *t);
 
 #endif

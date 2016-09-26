@@ -34,6 +34,8 @@ typedef struct {
 	tick_timer_t wall_contact_timer;
 } gladiator_t;
 
+/**@todo input of whether we fired last cycle? more fire related input needs to
+ * be added. */
 #define X_MACRO_GLADIATOR_INPUTS\
 	X(GLADIATOR_IN_VISION_ENEMY,       "detect hostile gladiator")\
 	X(GLADIATOR_IN_VISION_PROJECTILE,  "detect hostile projectile")\

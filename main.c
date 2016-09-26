@@ -5,6 +5,10 @@
  *              <https://www.gnu.org/licenses/old-licenses/lgpl-2.1.en.html> 
  *  @email      howe.r.j.89@gmail.com
  *  @todo structures for Cartesian and Polar coordinates
+ *  @todo split this file up
+ *  @todo s-expression based configuration file
+ *  @todo more debugging information should be acquired (inputs, outputs, brain
+ *  simulator - eg. what happens if I set these inputs, etc.)
  *  @todo allow the arena to be larger than the screen, and add a minimap
  *  @todo add a player object (gladiator, but human controlled), and player led selection
  *  @todo comment files, change LICENSE */

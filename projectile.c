@@ -51,6 +51,10 @@ void projectile_update(projectile_t *p)
 	assert(p);
 	if(!projectile_is_active(p))
 		return;
+	p->x_previous = p->x;
+	p->y_previous = p->y;
+	p->orientation_previous = p->orientation;
+
 	const double distance = projectile_distance_per_tick;
 	p->x += distance * cos(p->orientation);
 	p->x = wrap_or_limit_x(p->x);

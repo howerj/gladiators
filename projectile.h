@@ -12,8 +12,9 @@
 
 typedef struct {
 	double x, y;
-	double radius;
 	double orientation;
+	double radius;
+	double x_previous, y_previous, orientation_previous;
 	double travelled;
 	unsigned team;
 } projectile_t;

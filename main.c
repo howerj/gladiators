@@ -32,12 +32,14 @@ typedef struct {
 	size_t projectile_count;
 	size_t food_count;
 	unsigned generation;
+	/**@todo allow this to be saved and loaded from disk, along with the
+	 * configuration */
 } world_t;
 
 world_t *world;
 
 static unsigned tick = 0;
-static bool step = false;
+static bool step = false, skip = false;
 static unsigned alive;
 
 static double random_x(void)
@@ -68,6 +70,8 @@ static void keyboard_handler(unsigned char key, int x, int y)
 		  break;
 	case 'r': arena_paused = false;
 		  step = false;
+		  break;
+	case 'n': skip = true;
 		  break;
 	case 'q':
 	case ESC:
@@ -137,7 +141,7 @@ static double fps(void)
  * degree.
  *
  * See: https://developer.mozilla.org/en-US/docs/Games/Techniques/2D_collision_detection */
-static bool detect_projectile_collision(world_t *world, gladiator_t *g)
+static bool detect_projectile_collision(world_t *world, gladiator_t *g, bool hits[])
 {
 	if(gladiator_is_dead(g))
 		return false;
@@ -149,10 +153,9 @@ static bool detect_projectile_collision(world_t *world, gladiator_t *g)
 				g->x, g->y, g->radius,
 				p->x, p->y, p->radius);
 		if(hit) {
+			hits[i] = true;
 			g->health -= projectile_damage;
 			world->gs[i]->hits++;
-			if(gladiator_is_dead(world->gs[i]))
-				g->rank = alive--;
 			projectile_deactivate(world->ps[i]);
 			return true;
 		}
@@ -262,12 +265,14 @@ static bool detect_food(world_t *w, gladiator_t *k)
 	return false;
 }
 
-static void update_gladiator_inputs(world_t *w, gladiator_t *g, double inputs[])
+static void update_gladiator_inputs(world_t *w, gladiator_t *g, double inputs[], bool hit)
 {
 	assert(g && inputs);
 	/**@todo these inputs might need changing, especially the vision ones,
 	 * a direction could be given, whether the target appears in the left
-	 * or the right hand field of view...*/
+	 * or the right hand field of view...
+	 * @todo add whether the projectile hit or not as an input*/
+	inputs[GLADIATOR_IN_HIT_GLADIATOR]     = hit;
 	inputs[GLADIATOR_IN_CAN_FIRE]          = g->energy > projectile_energy_cost;
 	inputs[GLADIATOR_IN_FIELD_OF_VIEW]     = g->field_of_view / gladiator_max_field_of_view;
 	inputs[GLADIATOR_IN_VISION_FOOD]       = detect_food(w, g);
@@ -290,6 +295,11 @@ static void update_gladiator_inputs(world_t *w, gladiator_t *g, double inputs[])
 		if(cval != 0 && draw_gladiator_wall_collision)
 			draw_regular_polygon_filled(g->x, g->y, 0, gladiator_size, CIRCLE, WHITE);
 	}
+
+	/* normalizing inputs to [-1, 1] range */
+	if(brain_normalize_inputs)
+		for(size_t i = 0; i < GLADIATOR_IN_LAST_INPUT; i++)
+			inputs[i] = inputs[i] ? 1.0 : -1.0;
 }
 
 static void update_gladiator_outputs(gladiator_t *g, projectile_t *p, double outputs[])
@@ -306,25 +316,31 @@ static void update_scene(world_t *w)
 {
 	double inputs[GLADIATOR_IN_LAST_INPUT];
 	double outputs[GLADIATOR_OUT_LAST_OUTPUT];
-
+	bool hits[w->projectile_count];
+	alive = 0;
+	memset(hits, 0, sizeof(hits[0]) * w->projectile_count);
 	for(unsigned i = 0; i < w->gladiator_count; i++)
-		detect_projectile_collision(world, w->gs[i]);
+		if(!gladiator_is_dead(world->gs[i]))
+			alive++;
+	for(unsigned i = 0; i < w->gladiator_count; i++)
+		detect_projectile_collision(world, w->gs[i], hits);
 	for(unsigned i = 0; i < w->gladiator_count; i++)
 		detect_food_collision(world, w->gs[i]);
 	for(unsigned i = 0; i < w->projectile_count; i++)
 		projectile_update(world->ps[i]);
 	for(unsigned i = 0; i < w->food_count; i++)
 		food_update(world->fs[i]);
-
 	for(unsigned i = 0; i < w->gladiator_count; i++) {
 		gladiator_t *g = w->gs[i];
+		unsigned hit = hits[i];
 		if(gladiator_is_dead(g))
 			continue;
+		g->rank = tick;
 
 		memset(inputs,  0, sizeof(inputs));
 		memset(outputs, 0, sizeof(outputs));
 
-		update_gladiator_inputs(w, g, inputs);
+		update_gladiator_inputs(w, g, inputs, hit);
 		gladiator_update(g, inputs, outputs);
 		update_gladiator_outputs(g, w->ps[i], outputs);
 	}
@@ -376,6 +392,11 @@ static void update_fitness(gladiator_t **gs, size_t count)
 		gs[i]->fitness = gladiator_fitness(gs[i]);
 }
 
+/**@note make a tournament based operating mode
+ *
+ * A tournament based game mode of operation should be made, a population
+ * faces off each other member and roulette wheel selection (and optionally
+ * some cross over) decides the next generation.*/
 static void new_generation(gladiator_t **gs, size_t count)
 {
 	update_fitness(gs, count);
@@ -388,8 +409,6 @@ static void new_generation(gladiator_t **gs, size_t count)
 		gladiator_delete(weakest);
 		gs[0] = gladiator_copy(strongest);
 	}
-
-	/*brain_save(stdout, gs[count - 1]->brain);*/
 
 	for(size_t i = 0; i < count - 1; i++) {
 		gs[i]->mutations = gladiator_mutate(gs[i]);
@@ -430,7 +449,7 @@ static void draw_scene(void)
 	draw_regular_polygon_line(Xmax/2, Ymax/2, PI/4, sqrt(Ymax*Ymax/2), SQUARE, 0.5, WHITE);
 
 	if(next != tick && (!arena_paused || step)) {
-		if(tick > max_ticks_per_generation) {
+		if(tick > max_ticks_per_generation || alive <= 1 || skip) {
 			for(size_t i = 0; i < world->projectile_count; i++)
 				projectile_deactivate(world->ps[i]);
 			alive = world->gladiator_count;
@@ -439,6 +458,7 @@ static void draw_scene(void)
 			tick = 0;
 			world->generation++;
 			arena_paused = program_pause_after_new_generation;
+			skip = false;
 		}
 		step = false;
 		next = tick;
@@ -519,9 +539,9 @@ static void print_fitness(FILE *out, gladiator_t **g, size_t count)
 }
 
 static void headless_loop(world_t *w, FILE *out, unsigned count, bool forever)
-{
-	for(unsigned tick = 0; w->generation < count || forever; tick++) {
-		if(tick > max_ticks_per_generation) {
+{ 
+	for(tick = 0; w->generation < count || forever; tick++) {
+		if(tick > max_ticks_per_generation || alive <= 1) {
 			update_fitness(w->gs, w->gladiator_count);
 
 			fprintf(out, "generation: %u\n", w->generation);

@@ -27,11 +27,12 @@ typedef enum {
 	X(unsigned,  arena_food_count,                   4,       false)\
 	X(unsigned,  arena_gladiator_count,              3,       false)\
 	X(bool,      arena_paused,                       false,   true)\
+	X(bool,      arena_random_gladiator_start,       true,    true)\
 	X(double,    arena_tick_ms,                      15.0,    true)\
 	X(bool,      arena_wraps_at_edges,               false,   true)\
-	X(bool,      arena_random_gladiator_start,       true,    true)\
+	X(unsigned,  brain_activation_function,          0,       true)\
 	X(double,    brain_max_weight_increment,         2.0,     false)\
-	X(unsigned,  brain_neuron_calculation_method,    0,       true)\
+	X(bool,      brain_normalize_inputs,             true,    true)\
 	X(double,    detection_lines,                    100.0,   false)\
 	X(bool,      draw_gladiator_collision,           true,    true)\
 	X(bool,      draw_gladiator_target_lines,        true,    true)\
@@ -42,7 +43,7 @@ typedef enum {
 	X(double,    fitness_weight_food,                1.0,     true)\
 	X(double,    fitness_weight_health,              1.5,     true)\
 	X(double,    fitness_weight_hits,                1.0,     true)\
-	X(double,    fitness_weight_rank,                0.5,     true)\
+	X(double,    fitness_weight_rank,                0.001,   true)\
 	X(double,    fitness_weight_wall_time,          -1.0,     true)\
 	X(bool,      food_active,                        false,    true)\
 	X(unsigned,  food_control_method,                1,       true)\

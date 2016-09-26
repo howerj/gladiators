@@ -176,8 +176,8 @@ double gladiator_fitness(gladiator_t *g)
 	fitness += g->hits   * fitness_weight_hits;
 	fitness += g->energy * fitness_weight_energy;
 	fitness += g->foods  * fitness_weight_food;
+	fitness += g->rank   * fitness_weight_rank;
 	fitness += tick_result(&g->wall_contact_timer) * fitness_weight_wall_time;
-	/*fitness += ((arena_gladiator_count / (g->rank + 1)) - 1) * fitness_weight_rank;*/
 	return fitness;
 }
 

@@ -194,19 +194,30 @@ void brain_delete(brain_t *b)
 static double calculate_response(neuron_t *n, const double in[], size_t length) 
 {    /* see http://www.cs.bham.ac.uk/~jxb/NN/nn.html*/
 	assert(n && in && length);
-
-	switch(brain_neuron_calculation_method) {
-	case 0: 
-	{ /**@todo add in other calculation methods*/
-		double total = n->bias;
-		for(size_t i = 0; i < length; i++)
-			total += in[i] * n->weights[i];
-		return 1.0 / (1.0 + exp(-total));
+	double total = n->bias;
+	for(size_t i = 0; i < length; i++)
+		total += in[i] * n->weights[i];
+	switch(brain_activation_function) {
+	case LOGISTIC_FUNCTION_E: 
+				if(total < -45) return 0; /*overflow on exp*/
+				if(total >  45) return 1; /*underflow on exp*/
+				return 1.0 / (1.0 + exp(-total)); 
+	case TANH_FUNCTION_E:     
+				return tanh(total);
+	case ATAN_FUNCTION_E:
+				return atan(total);
+	case IDENTITY_FUNCTION_E: 
+				return total;
+	case BINARY_STEP_FUNCTION_E:
+				return total >= 0;
+	case RECTIFIER_FUNCTION_E:
+				return MAX(0, total);
+	case SIN_FUNCTION_E:
+				return sin(total);
+	default:                
+				break;
 	}
-	default:
-		break;
-	}
-	error("invalid calculation method: %u", brain_neuron_calculation_method);
+	error("invalid calculation method: %u", brain_activation_function);
 	return 0.0;
 }
 

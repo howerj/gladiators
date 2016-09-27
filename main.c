@@ -1,8 +1,7 @@
 /** @file       main.c
  *  @brief      Gladiators program: Evolve neural network controlled gladiators
  *  @author     Richard Howe (2016)
- *  @license    LGPL v2.1 or Later 
- *              <https://www.gnu.org/licenses/old-licenses/lgpl-2.1.en.html> 
+ *  @license    MIT <https://opensource.org/licenses/MIT>
  *  @email      howe.r.j.89@gmail.com
  *  @todo structures for Cartesian and Polar coordinates
  *  @todo split this file up
@@ -10,8 +9,10 @@
  *  @todo more debugging information should be acquired (inputs, outputs, brain
  *  simulator - eg. what happens if I set these inputs, etc.)
  *  @todo allow the arena to be larger than the screen, and add a minimap
- *  @todo add a player object (gladiator, but human controlled), and player led selection
- *  @todo comment files, change LICENSE */
+ *  @todo add a player object, and player led selection, and a networked
+ *  version
+ *  @todo Compile time options for headless version only
+ *  @todo comment files*/
 
 #include "util.h"
 #include "gladiator.h"
@@ -19,6 +20,7 @@
 #include "collision.h"
 #include "food.h"
 #include "vars.h"
+#include "gui.h"
 #include <assert.h>
 #include <ctype.h>
 #include <stdlib.h>
@@ -269,13 +271,13 @@ static bool detect_food(world_t *w, gladiator_t *k)
 	return false;
 }
 
+#define INPUT_MAX (2.0)
 static void update_gladiator_inputs(world_t *w, gladiator_t *g, double inputs[], bool hit)
 {
 	assert(g && inputs);
 	/**@todo these inputs might need changing, especially the vision ones,
 	 * a direction could be given, whether the target appears in the left
-	 * or the right hand field of view...
-	 * @todo add whether the projectile hit or not as an input*/
+	 * or the right hand field of view...*/
 	inputs[GLADIATOR_IN_HIT_GLADIATOR]     = hit;
 	inputs[GLADIATOR_IN_CAN_FIRE]          = g->energy > projectile_energy_cost;
 	inputs[GLADIATOR_IN_FIELD_OF_VIEW]     = g->field_of_view / gladiator_max_field_of_view;
@@ -303,7 +305,8 @@ static void update_gladiator_inputs(world_t *w, gladiator_t *g, double inputs[],
 	/* normalizing inputs to [-1, 1] range */
 	if(brain_normalize_inputs)
 		for(size_t i = 0; i < GLADIATOR_IN_LAST_INPUT; i++)
-			inputs[i] = inputs[i] ? 1.0 : -1.0;
+			inputs[i] = (inputs[i]*INPUT_MAX) - (INPUT_MAX/2.0);
+			//inputs[i] = inputs[i] ? 1.0 : -1.0;
 }
 
 static void update_gladiator_outputs(gladiator_t *g, projectile_t *p, double outputs[])
@@ -632,6 +635,7 @@ int main(int argc, char **argv)
 		}
 done:
 	load_config();
+	random_seed(program_random_seed);
 
 	if(run_headless)
 		program_run_headless = true;

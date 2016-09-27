@@ -1,18 +1,16 @@
 /** @file       util.h
- *  @brief      
+ *  @brief      Portable utility functions
  *  @author     Richard Howe (2016)
- *  @license    LGPL v2.1 or Later 
- *              <https://www.gnu.org/licenses/old-licenses/lgpl-2.1.en.html> 
+ *  @license    MIT <https://opensource.org/licenses/MIT>
  *  @email      howe.r.j.89@gmail.com*/
 
 #ifndef UTIL_H
 #define UTIL_H
 
-#include "color.h"
+#include <assert.h>
 #include <stddef.h>
-#include <stdint.h>
-#include <stdarg.h>
 #include <stdbool.h>
+#include <stdio.h>
 
 #define UNUSED(X) ((void)(X))
 
@@ -22,63 +20,72 @@
 #define MAX(X, Y) ((X) > (Y) ? (X) : (Y))
 #define MIN(X, Y) ((X) < (Y) ? (X) : (Y))
 
-typedef enum {
-	TRIANGLE,
-	SQUARE,
-	PENTAGON,
-	HEXAGON,
-	SEPTAGON,
-	OCTAGON,
-	DECAGON,
-	CIRCLE,
-	INVALID_SHAPE
-} shape_e;
-
-typedef shape_e shape_t;
-
-typedef struct {
-	double x, y;
-	bool draw_box;
-	color_t color_text, color_box;
-	double width, height;
-} textbox_t;
-
-typedef struct { /**@note it might be worth translating some functions to use points*/
-	double x, y;
-} point_t;
-
 typedef struct {
 	unsigned i;
 	unsigned max;
 } tick_timer_t;
 
 void *allocate(size_t sz);
+char *duplicate(const char *s);
 double rad2deg(double rad);
 double deg2rad(double deg);
-void set_color(color_t color);
-void draw_regular_polygon_filled(double x, double y, double orientation, double radius, shape_t shape, color_t color);
-void draw_regular_polygon_line(double x, double y, double orientation, double radius, shape_t shape, double thickness, color_t color);
-void draw_line(double x, double y, double angle, double magnitude, double thickness, color_t color);
-void draw_cross(double x, double y, double angle, double magnitude, double thickness, color_t color);
-void draw_arc_filled(double x, double y, double angle, double magnitude, double arc, color_t color);
-void draw_arc_line(double x, double y, double angle, double magnitude, double arc, double thickness, color_t color);
-void draw_rectangle_filled(double x, double y, double width, double height, color_t color);
-void draw_rectangle_line(double x, double y, double width, double height, double thickness, color_t color);
-int draw_text(color_t color, double x, double y, const char *fmt, ...);
-int vdraw_text(color_t color, double x, double y, const char *fmt, va_list ap);
-
+void random_seed(double seed);
 double random_float(void);
-
-void fill_textbox(textbox_t *t, bool on, const char *fmt, ...);
-void draw_textbox(textbox_t *t);
-
 
 double wrap_or_limit_x(double x);
 double wrap_or_limit_y(double y);
 double wrap_rad(double rad);
 
-color_t team_to_color(unsigned team);
 bool tick_timer(tick_timer_t *t);
 bool tick_result(tick_timer_t *t);
+
+typedef enum {
+	NIL,
+	INTEGER,
+	FLOAT,
+	SYMBOL,
+	STRING,
+	CONS,
+	INVALID_CELL_TYPE
+} cell_type_e;
+
+#define CELL_MAX_STRING_LENGTH (256)
+
+typedef struct cell_t {
+	cell_type_e type;
+	union data{
+		struct cons_t {
+			struct cell_t *car;
+			struct cell_t *cdr;
+		} cons;
+		char *string;
+		int integer;
+		double floating;
+	} p;
+} cell_t;
+
+static inline cell_t *car(cell_t *cons)
+{
+	assert(cons && cons->type == CONS);
+	cell_t *r = cons->p.cons.car;
+	assert(r);
+	return r;
+}
+
+static inline cell_t *cdr(cell_t *cons)
+{
+	assert(cons && cons->type == CONS);
+	cell_t *r = cons->p.cons.cdr;
+	assert(r);
+	return r;
+}
+
+cell_t *cons(cell_t *car, cell_t *cdr);
+
+void cell_delete(cell_t *cell);
+cell_t *read_s_expression_from_file(FILE *input);
+cell_t *read_s_expression_from_string(const char *input);
+int write_s_expression_to_file(cell_t *cell, FILE *output);
+cell_t *cell_cons(cell_t *car, cell_t *cdr);
 
 #endif

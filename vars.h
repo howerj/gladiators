@@ -1,8 +1,7 @@
 /** @file       vars.h
- *  @brief      
+ *  @brief      Global configuration items and management
  *  @author     Richard Howe (2016)
- *  @license    LGPL v2.1 or Later 
- *              <https://www.gnu.org/licenses/old-licenses/lgpl-2.1.en.html> 
+ *  @license    MIT <https://opensource.org/licenses/MIT>
  *  @email      howe.r.j.89@gmail.com*/
 
 #ifndef VARS_H
@@ -20,9 +19,7 @@ typedef enum {
 	ALL_MESSAGES_ON,
 } verbosity_t;
 
-/**@todo add global constants in here, they should not be saved, nor allowed to
- * be loaded from disk
- * @todo A GUI menu system could be created from this list, potentially*/
+/* @todo A GUI menu system could be created from this list, potentially*/
 #define CONFIG_X_MACRO\
 	X(unsigned,  arena_food_count,                   4,       false)\
 	X(unsigned,  arena_gladiator_count,              3,       false)\

@@ -1,8 +1,7 @@
 /** @file       brain.h
- *  @brief      
+ *  @brief      A customizable neural network library
  *  @author     Richard Howe (2016)
- *  @license    LGPL v2.1 or Later 
- *              <https://www.gnu.org/licenses/old-licenses/lgpl-2.1.en.html> 
+ *  @license    MIT <https://opensource.org/licenses/MIT>
  *  @email      howe.r.j.89@gmail.com*/
 
 #ifndef BRAIN_H

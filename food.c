@@ -1,6 +1,12 @@
+/** @file       food.c
+ *  @brief      Food object 
+ *  @author     Richard Howe (2016)
+ *  @license    MIT <https://opensource.org/licenses/MIT>
+ *  @email      howe.r.j.89@gmail.com*/  
 #include "food.h"
 #include "vars.h"
 #include "util.h"
+#include "gui.h"
 #include <assert.h>
 #include <stdlib.h>
 #include <math.h>

@@ -1,8 +1,7 @@
 /** @file       vars.c
- *  @brief      
+ *  @brief      Global configuration variables and management
  *  @author     Richard Howe (2016)
- *  @license    LGPL v2.1 or Later 
- *              <https://www.gnu.org/licenses/old-licenses/lgpl-2.1.en.html> 
+ *  @license    MIT <https://opensource.org/licenses/MIT>
  *  @email      howe.r.j.89@gmail.com*/
 
 #include "vars.h"
@@ -148,14 +147,17 @@ void load_config(void)
 			error("unknown configuration item '%s'", item);
 		assert(db[i].addr);
 		unsigned b = 0;
+		int r = 0;
 		switch(db[i].type) {
-		case double_e:   fscanf(in, "%lf\n", (double*)db[i].addr);          break;
-		case bool_e:     fscanf(in, "%u\n",  &b); *((bool*)db[i].addr) = b; break;
-		case int_e:      fscanf(in, "%d\n",  (int*)db[i].addr);             break;
-		case unsigned_e: fscanf(in, "%u\n",  (unsigned*)db[i].addr);        break;
+		case double_e:   r = fscanf(in, "%lf\n", (double*)db[i].addr);          break;
+		case bool_e:     r = fscanf(in, "%u\n",  &b); *((bool*)db[i].addr) = b; break;
+		case int_e:      r = fscanf(in, "%d\n",  (int*)db[i].addr);             break;
+		case unsigned_e: r = fscanf(in, "%u\n",  (unsigned*)db[i].addr);        break;
 		case end_e:      break;
 		default:         error("invalid configuration item type '%d'", db[i].type);
 		}
+		if(r != 1)
+			error("could not scan input token of type '%u'", (unsigned)(db[i].type));
 		memset(item, 0, sizeof(item));
 	}
 	if(!validate_config())

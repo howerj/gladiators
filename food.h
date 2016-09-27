@@ -1,3 +1,9 @@
+/** @file       food.h
+ *  @brief      Food object, gladiators can eat this
+ *  @author     Richard Howe (2016)
+ *  @license    MIT <https://opensource.org/licenses/MIT>
+ *  @email      howe.r.j.89@gmail.com*/
+
 #ifndef FOOD_H
 #define FOOD_H
 

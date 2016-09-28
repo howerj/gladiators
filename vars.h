@@ -68,6 +68,7 @@ typedef enum {
 	X(double,    gladiator_wall_time,                1000.0,  true)\
 	X(double,    max_ticks_per_generation,           4000.0,  false)\
 	X(double,    mutation_rate,                      0.075,   true)\
+	X(bool,      use_crossover,                      false,   true)\
 	X(bool,      print_arena_tick,                   true,    true)\
 	X(bool,      print_fps,                          true,    true)\
 	X(bool,      print_generation,                   true,    true)\

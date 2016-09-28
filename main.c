@@ -415,6 +415,13 @@ static void new_generation(gladiator_t **gs, size_t count)
 	if(strongest->fitness != weakest->fitness) {
 		gladiator_delete(weakest);
 		gs[0] = gladiator_copy(strongest);
+
+		if(count > 2 && use_crossover) {
+			gladiator_t *beta = gs[count - 2];
+			weakest = gs[1];
+			gs[1] = gladiator_breed(beta, strongest);
+			gladiator_delete(weakest);
+		}
 	}
 
 	for(size_t i = 0; i < count - 1; i++) {

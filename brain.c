@@ -120,40 +120,43 @@ static void neuron_mutate(neuron_t *n, size_t depth, unsigned *count)
 		n->weights[i] = mutation(n->weights[i], n->weight_count*depth, count);
 }
 
-static int neuron_save(FILE *output, neuron_t *n)
+static cell_t *neuron_serialize(neuron_t *n)
 {
-	fprintf(output, "bias      %f\n",  n->bias);
-	fprintf(output, "threshold %f\n",  n->threshold);
-	fprintf(output, "weights   ");
-	for(size_t i = 0; i < n->weight_count; i++)
-		if(fprintf(output, "%f ", n->weights[i]) < 0)
-			return -1;
-	fputc('\n', output);
-	return 0;
+	cell_t *head = cons(mksym("weights"), nil());
+	cell_t *r = mklist(mksym("neuron"),
+		mklist(mksym("bias"),      mkfloat(n->bias), NULL),
+		mklist(mksym("threshold"), mkfloat(n->threshold), NULL), 
+		head, NULL);
+	cell_t *op = head;
+	for(size_t i = 0; i < n->weight_count; op = cdr(op), i++)
+		setcdr(op, cons(mkfloat(n->weights[i]), nil()));
+	return r;
 }
 
-static int layer_save(FILE *output, layer_t *layer)
+static cell_t *layer_serialize(layer_t *layer)
 {
-	assert(output && layer);
-	for(size_t i = 0; i < layer->length; i++) {
-		fprintf(output, "neuron    %zu\n", i);
-		if(neuron_save(output, layer->neurons[i]) < 0)
-			return -1;
-	}
-	return 0;
+	assert(layer);
+	cell_t *head = cons(mksym("layer"), nil());
+	cell_t *op   = head;
+	for(size_t i = 0; i < layer->length; op = cdr(op), i++)
+		setcdr(op, cons(neuron_serialize(layer->neurons[i]), nil()));
+	return head;
 }
 
 int brain_save(FILE *output, brain_t *b)
 {
-	assert(output && b);
-	if(fprintf(output, "brain %zu %zu\n", b->depth, b->length) < 0)
-		return -1;
-	for(size_t i = 0; i < b->depth; i++) {
-		fprintf(output, "layer     %zu\n", i);
-		if(layer_save(output, b->layers[i]) < 0)
-			return -1;
-	}
-	return 0;
+	cell_t *head = cons(mksym("layers"), nil());
+	cell_t *r    = mklist(mksym("brain"),
+			mklist(mksym("depth"),  mkint(b->depth),  NULL),
+			mklist(mksym("length"), mkint(b->length), NULL),
+			head,
+			NULL);
+	cell_t *op = head;
+	for(size_t i = 0; i < b->depth; op = cdr(op), i++)
+		setcdr(op, cons(layer_serialize(b->layers[i]), nil()));
+	int rval = write_s_expression_to_file(r, output);
+	cell_delete(r);
+	return rval;
 }
 
 brain_t *brain_new(bool rand, size_t length, size_t depth)
@@ -163,7 +166,7 @@ brain_t *brain_new(bool rand, size_t length, size_t depth)
 	b->length    = length;
 	b->depth     = depth < 2 ? 2 : depth;
 	b->inputs    = allocate(sizeof(b->inputs[0]) * length);
-	b->layers    = allocate(sizeof(b->layers[0]) * length);
+	b->layers    = allocate(sizeof(b->layers[0]) * depth);
 	for(size_t i = 0; i < b->depth; i++)
 		b->layers[i] = layer_new(rand, length);
 	if(verbose(DEBUG) && rand)
@@ -255,9 +258,17 @@ unsigned brain_mutate(brain_t *b)
 	return mutations;
 }
 
-layer_t *layer_load(FILE *input, size_t length)
+neuron_t *neuron_deserialize(cell_t *c, size_t length)
 {
-	UNUSED(input);
+	UNUSED(c);
+	UNUSED(length);
+	/**@todo implement this; neuron_load*/
+	return NULL;
+}
+
+layer_t *layer_deserialize(cell_t *c, size_t length)
+{
+	UNUSED(c);
 	UNUSED(length);
 	/**@todo implement this; layer_load*/
 	return NULL;
@@ -266,19 +277,30 @@ layer_t *layer_load(FILE *input, size_t length)
 brain_t *brain_load(FILE *input)
 {
 	size_t depth = 0, length = 0;
-	fscanf(input, "brain %zu %zu\n", &depth, &length);
 	brain_t *b = brain_new(false, depth, length);
+	cell_t *c = read_s_expression_from_file(input);
+	/**@todo implement this; brain_load*/
+	cell_delete(c);
 	return b;
 }
 
+/**@note different crossover strategies should be experimented with, either
+ * crossing over at random points, or crossing at finer points within layers */
 brain_t *brain_crossover(brain_t *a, brain_t *b)
 {
 	assert(a && b);
 	assert(a->depth == b->depth && a->length == b->length);
-	brain_t *c = NULL;
-	
-	/**@todo implement this; brain_crossover*/
-
+	brain_t *c = allocate(sizeof(*c));
+	c->depth = a->depth;
+	c->length = a->length;
+	c->inputs = allocate(sizeof(c->inputs[0]) * c->length);
+	c->layers = allocate(sizeof(c->layers[0]) * c->depth);
+	for(size_t i = 0; i < c->depth; i++) {
+		if(i & 1)
+			c->layers[i] = layer_copy(a->layers[i]);
+		else
+			c->layers[i] = layer_copy(b->layers[i]);
+	}
 	return c;
 }
 

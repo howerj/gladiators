@@ -64,28 +64,22 @@ typedef struct cell_t {
 	} p;
 } cell_t;
 
-static inline cell_t *car(cell_t *cons)
-{
-	assert(cons && cons->type == CONS);
-	cell_t *r = cons->p.cons.car;
-	assert(r);
-	return r;
-}
-
-static inline cell_t *cdr(cell_t *cons)
-{
-	assert(cons && cons->type == CONS);
-	cell_t *r = cons->p.cons.cdr;
-	assert(r);
-	return r;
-}
-
+cell_type_e type(cell_t *cell);
+cell_t *car(cell_t *cons);
+cell_t *cdr(cell_t *cons);
+void setcar(cell_t *cons, cell_t *car);
+void setcdr(cell_t *cons, cell_t *cdr);
 cell_t *cons(cell_t *car, cell_t *cdr);
-
 void cell_delete(cell_t *cell);
 cell_t *read_s_expression_from_file(FILE *input);
 cell_t *read_s_expression_from_string(const char *input);
 int write_s_expression_to_file(cell_t *cell, FILE *output);
-cell_t *cell_cons(cell_t *car, cell_t *cdr);
+cell_t *cons(cell_t *car, cell_t *cdr);
+cell_t *nil(void);
+cell_t *mkfloat(double x);
+cell_t *mkint(int x);
+cell_t *mkstr(const char *s);
+cell_t *mksym(const char *s);
+cell_t *mklist(cell_t *l, ...);
 
 #endif

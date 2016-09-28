@@ -186,6 +186,9 @@ gladiator_t *gladiator_breed(gladiator_t *a, gladiator_t *b)
 {
 	gladiator_t *child = gladiator_new(a->team, 0, 0, 0);
 	brain_delete(child->brain);
+	child->mutations = MAX(a->mutations, b->mutations);
+	child->rank      = MAX(a->rank,      b->rank);
+	child->fitness   = MAX(a->fitness,   b->fitness);
 	child->brain = brain_crossover(a->brain, b->brain);
 	return child;
 }

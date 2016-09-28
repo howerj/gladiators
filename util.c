@@ -123,7 +123,11 @@ bool tick_result(tick_timer_t *t)
 	return t->i > t->max;
 }
 
-/**@todo separate out this s-expression stuff from the rest and clean it up */
+/**@todo separate out this s-expression stuff from the rest and clean it up,
+ * use longjmp for error handling 
+ * @todo mini-lisp interpreter 
+ * @todo Move this into another library?
+ * @todo schema format*/
 
 typedef struct {
 	unsigned line_number;
@@ -152,6 +156,7 @@ static void lexer_delete(lexer_t *l)
 static int get_char(lexer_t *l)
 {
 	int c;
+	assert(l);
 	if(l->unget) {
 		l->unget = false;
 		c = l->ungetc;
@@ -169,13 +174,46 @@ static int get_char(lexer_t *l)
 
 static int unget_char(lexer_t *l, int c)
 {
-	if(l->unget)
-		fprintf(stderr, "unget twice in a row (%u/%d/%d)", l->line_number, l->ungetc, c);
+	assert(l && !(l->unget));
 	l->unget = true;
 	l->ungetc = c;
 	if(l->ungetc == '\n')
 		l->line_number--;
 	return c;
+}
+
+cell_type_e type(cell_t *cell)
+{
+	assert(cell);
+	return cell->type;
+}
+
+cell_t *car(cell_t *cons)
+{
+	assert(cons && type(cons) == CONS);
+	cell_t *r = cons->p.cons.car;
+	assert(r);
+	return r;
+}
+
+cell_t *cdr(cell_t *cons)
+{
+	assert(cons && type(cons) == CONS);
+	cell_t *r = cons->p.cons.cdr;
+	assert(r);
+	return r;
+}
+
+void setcar(cell_t *cons, cell_t *car)
+{
+	assert(cons && type(cons) == CONS);
+	cons->p.cons.car = car;
+}
+
+void setcdr(cell_t *cons, cell_t *cdr)
+{
+	assert(cons && type(cons) == CONS);
+	cons->p.cons.cdr = cdr;
 }
 
 cell_t *cell_new(cell_type_e type)
@@ -186,13 +224,64 @@ cell_t *cell_new(cell_type_e type)
 	return c;
 }
 
+cell_t *mkfloat(double x)
+{
+	cell_t *d = cell_new(FLOAT);
+	d->p.floating = x;
+	return d;
+}
+
+cell_t *mkint(int x)
+{
+	cell_t *d = cell_new(INTEGER);
+	d->p.integer = x;
+	return d;
+}
+
+cell_t *mkstr(const char *s)
+{ /**@todo binary strings */
+	assert(s);
+	cell_t *d = cell_new(STRING);
+	d->p.string = duplicate(s);
+	return d;
+}
+
+cell_t *mksym(const char *s)
+{ /**@todo intern strings */
+	assert(s);
+	cell_t *d = cell_new(SYMBOL);
+	d->p.string = duplicate(s);
+	return d;
+}
+
 cell_t *cons(cell_t *car, cell_t *cdr)
 {
 	assert(car && cdr);
+	assert((type(cdr) == NIL) || (type(cdr) == CONS));
 	cell_t *c = cell_new(CONS);
 	c->p.cons.car = car;
 	c->p.cons.cdr = cdr;
 	return c;
+}
+
+cell_t *mklist(cell_t *l, ...)
+{
+	assert(l);
+	size_t i;
+	cell_t *head, *op, *next;
+	va_list ap;
+	head = op = cons(l, nil());
+	va_start(ap, l);
+	for (i = 1; (next = va_arg(ap, cell_t *)); op = cdr(op), i++)
+		setcdr(op, cons(next, nil()));
+	va_end(ap);
+	return head;
+}
+
+cell_t *nil(void)
+{ 
+	static cell_t n = { .type = NIL };
+	return &n;
 }
 
 void cell_delete(cell_t *cell)
@@ -201,6 +290,7 @@ void cell_delete(cell_t *cell)
 		return;
 	switch(cell->type) {
 	case NIL:
+		return;
 	case INTEGER:
 	case FLOAT:   free(cell); 
 		      return;
@@ -221,6 +311,7 @@ void cell_delete(cell_t *cell)
 
 static cell_t *parse_string(lexer_t *l)
 {
+	assert(l);
 	char s[CELL_MAX_STRING_LENGTH] = {0};
 	cell_t *c = cell_new(STRING);
 	for(size_t i = 0; i < CELL_MAX_STRING_LENGTH - 1; i++) {
@@ -261,6 +352,7 @@ fail:
 
 static cell_t *parse_symbol_or_number(lexer_t *l)
 {
+	assert(l);
 	char s[CELL_MAX_STRING_LENGTH] = {0};
 	cell_t *c = cell_new(SYMBOL);
 	for(size_t i = 0; i < CELL_MAX_STRING_LENGTH - 1; i++) {
@@ -308,6 +400,7 @@ static cell_t *read_s_expression(lexer_t *l);
 
 static cell_t *parse_list(lexer_t *l)
 {
+	assert(l);
 	int ch;
 again:
 	ch = get_char(l);
@@ -333,6 +426,7 @@ again:
 
 static cell_t *read_s_expression(lexer_t *l)
 {
+	assert(l);
 	int ch;
 again:
 	ch = get_char(l);
@@ -356,6 +450,7 @@ again:
 
 cell_t *read_s_expression_from_file(FILE *input)
 {
+	assert(input);
 	lexer_t *l = lexer_new(input, NULL);
 	cell_t *c = read_s_expression(l);
 	lexer_delete(l);
@@ -364,6 +459,7 @@ cell_t *read_s_expression_from_file(FILE *input)
 
 cell_t *read_s_expression_from_string(const char *input)
 {
+	assert(input);
 	lexer_t *l = lexer_new(NULL, input);
 	cell_t *c = read_s_expression(l);
 	lexer_delete(l);
@@ -372,6 +468,7 @@ cell_t *read_s_expression_from_string(const char *input)
 
 static int print_escaped_string(const char *s, FILE *output)
 {
+	assert(s && output);
 	int r = 1, f = 0;
 	if((f = fputc('"', output)) < 0)
 		return f;
@@ -404,8 +501,18 @@ static int print_escaped_string(const char *s, FILE *output)
 	return r;
 }
 
-int write_s_expression_to_file(cell_t *cell, FILE *output)
+static int indent(unsigned count, FILE *output)
 {
+	int r = count;
+	while(count--)
+		if(fputc(' ', output) < 0)
+			return -1;
+	return r;
+}
+
+static int _write_s_expression_to_file(cell_t *cell, FILE *output, unsigned depth)
+{ /**@todo basic pretty printing */
+	assert(cell && output);
 	if(!cell)
 		fatal("unexpected NULL");
 	switch(cell->type) {
@@ -416,14 +523,19 @@ int write_s_expression_to_file(cell_t *cell, FILE *output)
 	case STRING:  return print_escaped_string(cell->p.string, output);
 	case CONS:
 	{
-		int r = 0, f = 0;
+		int r = 1, f = 0;
+		if((f = fputc('\n', output)) < 0)
+			return f;
+		if((f = indent(depth, output)) < 0)
+			return f;
+		r += f;
 		if((f = fputc('(', output)) < 0)
 			return f;
 		r++;
 		for( ; cell->type != NIL; cell = cell->p.cons.cdr, r += f)
-			if((f = write_s_expression_to_file(cell->p.cons.car, output)) < 0)
+			if((f = _write_s_expression_to_file(cell->p.cons.car, output, depth+1)) < 0)
 				return f;
-		if((f = fputs(") ", output)) < 0)
+		if((f = fputs(")", output)) < 0)
 			return f;
 		return r + f;
 	}
@@ -432,5 +544,10 @@ int write_s_expression_to_file(cell_t *cell, FILE *output)
 		fatal("unknown type '%u'", cell->type);
 	}
 	return -1;
+}
+
+int write_s_expression_to_file(cell_t *cell, FILE *output)
+{
+	return _write_s_expression_to_file(cell, output, 0);
 }
 

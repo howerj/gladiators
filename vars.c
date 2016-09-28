@@ -2,7 +2,8 @@
  *  @brief      Global configuration variables and management
  *  @author     Richard Howe (2016)
  *  @license    MIT <https://opensource.org/licenses/MIT>
- *  @email      howe.r.j.89@gmail.com*/
+ *  @email      howe.r.j.89@gmail.com
+ *  @todo       Convert to use S-expressions for the format*/
 
 #include "vars.h"
 #include <assert.h>

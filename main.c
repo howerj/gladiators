@@ -38,6 +38,7 @@ typedef struct {
 	size_t projectile_count;
 	size_t food_count;
 	unsigned generation;
+	unsigned alive;
 	/**@todo allow this to be saved and loaded from disk, along with the
 	 * configuration */
 } world_t;
@@ -46,7 +47,6 @@ world_t *world;
 
 static unsigned tick = 0;
 static bool step = false, skip = false;
-static unsigned alive;
 
 static double random_x(void)
 {
@@ -217,13 +217,13 @@ static bool detect_gladiator_collision(world_t *w, gladiator_t *g)
 	return false;
 }
 
-static bool detect_enemy_gladiator(world_t *w, gladiator_t *k)
+static bool detect_gladiator(world_t *w, gladiator_t *k, bool detect_enemy_only)
 {
 	assert(k);
 	for(size_t i = 0; i < w->gladiator_count; i++) {
 		gladiator_t *c = w->gs[i];
 		assert(c);
-		if((k->team == c->team) || gladiator_is_dead(c))
+		if((detect_enemy_only && (k->team == c->team)) || gladiator_is_dead(c))
 			continue;
 		bool t = detect_circle_cone_collision(
 				k->x, k->y, k->orientation, k->field_of_view, 
@@ -271,19 +271,24 @@ static bool detect_food(world_t *w, gladiator_t *k)
 	return false;
 }
 
-#define INPUT_MAX (2.0)
-static void update_gladiator_inputs(world_t *w, gladiator_t *g, double inputs[], bool hit)
+typedef enum {
+	NORMALIZATION_UNITY_E,         /**< range of [ 0, 1] */
+	NORMALIZATION_SIGNED_UNITY_E,  /**< range of [-1, 1] */
+	NORMALIZATION_SIGNED_BINARY_E, /**< if input is non zero, -1, else 1 */
+} normalization_method_t;
+
+#define INPUT_MAX (1.0)
+static void update_gladiator_inputs(world_t *w, gladiator_t *g, projectile_t *p, double inputs[], bool hit)
 {
-	assert(g && inputs);
-	/**@todo these inputs might need changing, especially the vision ones,
-	 * a direction could be given, whether the target appears in the left
-	 * or the right hand field of view...*/
+	assert(w && g && p && inputs);
+
+	/**@note all inputs should be scaled to be in the [0, 1] range */
 	inputs[GLADIATOR_IN_HIT_GLADIATOR]     = hit;
-	inputs[GLADIATOR_IN_CAN_FIRE]          = g->energy > projectile_energy_cost;
+	inputs[GLADIATOR_IN_CAN_FIRE]          = g->energy > projectile_energy_cost && !projectile_is_active(p);
 	inputs[GLADIATOR_IN_FIELD_OF_VIEW]     = g->field_of_view / gladiator_max_field_of_view;
 	inputs[GLADIATOR_IN_VISION_FOOD]       = detect_food(w, g);
 	inputs[GLADIATOR_IN_VISION_PROJECTILE] = detect_enemy_projectile(w, g);
-	inputs[GLADIATOR_IN_VISION_ENEMY]      = detect_enemy_gladiator(w, g);
+	inputs[GLADIATOR_IN_VISION_ENEMY]      = detect_gladiator(w, g, true);
 	inputs[GLADIATOR_IN_RANDOM]            = random_float();
 	inputs[GLADIATOR_IN_X]                 = g->x / Xmax;
 	inputs[GLADIATOR_IN_Y]                 = g->y / Ymax;
@@ -302,16 +307,25 @@ static void update_gladiator_inputs(world_t *w, gladiator_t *g, double inputs[],
 			draw_regular_polygon_filled(g->x, g->y, 0, gladiator_size, CIRCLE, WHITE);
 	}
 
-	/* normalizing inputs to [-1, 1] range */
-	if(brain_normalize_inputs)
-		for(size_t i = 0; i < GLADIATOR_IN_LAST_INPUT; i++)
-			inputs[i] = (inputs[i]*INPUT_MAX) - (INPUT_MAX/2.0);
-			//inputs[i] = inputs[i] ? 1.0 : -1.0;
+	for(size_t i = 0; i < GLADIATOR_IN_LAST_INPUT; i++) {
+		switch(brain_input_normalization_method) {
+		case NORMALIZATION_UNITY_E: /* do nothing */
+			break;
+		case NORMALIZATION_SIGNED_UNITY_E:
+			inputs[i] = (inputs[i]*2*INPUT_MAX) - INPUT_MAX;
+			break;
+		case NORMALIZATION_SIGNED_BINARY_E:
+			inputs[i] = inputs[i] ? 1.0 : -1.0;
+			break;
+		default:
+			error("unknown normalization method: %u", brain_input_normalization_method);
+		}
+	}
 }
 
 static void update_gladiator_outputs(gladiator_t *g, projectile_t *p, double outputs[])
 {
-	/*most outputs are handled in gladiator update*/
+	/*most outputs are handled in "gladiator_update()"*/
 	bool fire = outputs[GLADIATOR_OUT_FIRE] > gladiator_fire_threshold;
 	if(fire && g->energy >= projectile_energy_cost) {
 		g->energy -= projectile_energy_cost;
@@ -324,11 +338,11 @@ static void update_scene(world_t *w)
 	double inputs[GLADIATOR_IN_LAST_INPUT];
 	double outputs[GLADIATOR_OUT_LAST_OUTPUT];
 	bool hits[w->projectile_count];
-	alive = 0;
+	w->alive = 0;
 	memset(hits, 0, sizeof(hits[0]) * w->projectile_count);
 	for(unsigned i = 0; i < w->gladiator_count; i++)
 		if(!gladiator_is_dead(world->gs[i]))
-			alive++;
+			w->alive++;
 	for(unsigned i = 0; i < w->gladiator_count; i++)
 		detect_projectile_collision(world, w->gs[i], hits);
 	for(unsigned i = 0; i < w->gladiator_count; i++)
@@ -338,7 +352,8 @@ static void update_scene(world_t *w)
 	for(unsigned i = 0; i < w->food_count; i++)
 		food_update(world->fs[i]);
 	for(unsigned i = 0; i < w->gladiator_count; i++) {
-		gladiator_t *g = w->gs[i];
+		gladiator_t  *g = w->gs[i];
+		projectile_t *p = w->ps[i];
 		unsigned hit = hits[i];
 		if(gladiator_is_dead(g))
 			continue;
@@ -347,7 +362,7 @@ static void update_scene(world_t *w)
 		memset(inputs,  0, sizeof(inputs));
 		memset(outputs, 0, sizeof(outputs));
 
-		update_gladiator_inputs(w, g, inputs, hit);
+		update_gladiator_inputs(w, g, p, inputs, hit);
 		gladiator_update(g, inputs, outputs);
 		update_gladiator_outputs(g, w->ps[i], outputs);
 	}
@@ -362,7 +377,7 @@ static void draw_debug_info(world_t *w)
 	fill_textbox(&t, print_generation,        "generation: %u", w->generation);
 	fill_textbox(&t, print_arena_tick,        "tick:       %u", tick);
 	fill_textbox(&t, print_fps,               "fps:        %f", fps());
-	fill_textbox(&t, print_gladiators_alive,  "alive:      %u/%u", alive, w->gladiator_count);
+	fill_textbox(&t, print_gladiators_alive,  "alive:      %u/%u", w->alive, w->gladiator_count);
 
 	for(size_t i = 0; i < w->gladiator_count; i++) {
 		gladiator_t *g = w->gs[i];
@@ -404,7 +419,7 @@ static void update_fitness(gladiator_t **gs, size_t count)
  * A tournament based game mode of operation should be made, a population
  * faces off each other member and roulette wheel selection (and optionally
  * some cross over) decides the next generation.*/
-static void new_generation(gladiator_t **gs, size_t count)
+static void select_new_gladiators(gladiator_t **gs, size_t count)
 {
 	update_fitness(gs, count);
 
@@ -423,6 +438,11 @@ static void new_generation(gladiator_t **gs, size_t count)
 			gladiator_delete(weakest);
 		}
 	}
+	if(verbose(DEBUG)) {
+		cell_t *c = brain_serialize(strongest->brain);
+		write_s_expression_to_file(c, stdout);
+		cell_delete(c);
+	}
 
 	for(size_t i = 0; i < count - 1; i++) {
 		gs[i]->mutations = gladiator_mutate(gs[i]);
@@ -435,13 +455,29 @@ static void new_generation(gladiator_t **gs, size_t count)
 		gs[i]->hits = 0;
 		gs[i]->team = i;
 		gs[i]->foods = 0;
-		gs[i]->x = random_float() * Xmax;
-		gs[i]->y = random_float() * Ymax;
+		/**@bug random location even in non random mode*/
+		gs[i]->x = random_x();
+		gs[i]->y = random_y();
+		gs[i]->field_of_view = 0;
 		gs[i]->orientation = random_float() * 2.0 * PI;
 		gs[i]->enemy_gladiator_detected = 0;
 		gs[i]->enemy_projectile_detected = 0;
 		gs[i]->food_detected = 0;
 		gs[i]->wall_contact_timer.i = 0;
+	}
+}
+
+static void new_generation(world_t *w)
+{
+	for(size_t i = 0; i < w->projectile_count; i++) /*disable all projectiles*/
+		projectile_deactivate(w->ps[i]);
+	w->alive = w->gladiator_count;
+
+	select_new_gladiators(w->gs, w->gladiator_count); 
+
+	for(size_t i = 0; i < world->food_count; i++) { /*randomize food positions*/
+		w->fs[i]->x = random_x();
+		w->fs[i]->y = random_y();
 	}
 }
 
@@ -463,12 +499,8 @@ static void draw_scene(void)
 	draw_regular_polygon_line(Xmax/2, Ymax/2, PI/4, sqrt(Ymax*Ymax/2), SQUARE, 0.5, WHITE);
 
 	if(next != tick && (!arena_paused || step)) {
-		if(tick > max_ticks_per_generation || alive <= 1 || skip) {
-			for(size_t i = 0; i < world->projectile_count; i++)
-				projectile_deactivate(world->ps[i]);
-			alive = world->gladiator_count;
-
-			new_generation(world->gs, world->gladiator_count);
+		if(tick > max_ticks_per_generation || world->alive <= 1 || skip) {
+			new_generation(world);
 			tick = 0;
 			world->generation++;
 			arena_paused = program_pause_after_new_generation;
@@ -490,8 +522,8 @@ static void draw_scene(void)
 
 static world_t *initialize_arena(size_t gladiator_and_projectile_count, size_t food_count)
 {
-	alive = gladiator_and_projectile_count;
 	world_t *w = allocate(sizeof(*w));
+	w->alive = gladiator_and_projectile_count;
 	w->gladiator_count = gladiator_and_projectile_count;
 	w->projectile_count = gladiator_and_projectile_count;
 	w->food_count = food_active ? food_count : 0;
@@ -555,21 +587,21 @@ static void print_fitness(FILE *out, gladiator_t **g, size_t count)
 static void headless_loop(world_t *w, FILE *out, unsigned count, bool forever)
 { 
 	for(tick = 0; w->generation < count || forever; tick++) {
-		if(tick > max_ticks_per_generation || alive <= 1) {
+		if(tick > max_ticks_per_generation || w->alive <= 1) {
 			update_fitness(w->gs, w->gladiator_count);
 
-			fprintf(out, "generation: %u\n", w->generation);
-			fprintf(out, "fitness:    ");
-			print_fitness(out, w->gs, w->gladiator_count);
+			if(verbose(NOTE)) {
+				fprintf(out, "generation: %u\n", w->generation);
+				fprintf(out, "fitness:    ");
+				print_fitness(out, w->gs, w->gladiator_count);
+			}
 
-			for(size_t i = 0; i < w->projectile_count; i++)
-				projectile_deactivate(w->ps[i]);
-			alive = w->gladiator_count;
+			new_generation(w);
 
-			new_generation(w->gs, w->gladiator_count);
-
-			fprintf(out, "            ");
-			print_fitness(out, w->gs, w->gladiator_count);
+			if(verbose(NOTE)) {
+				fprintf(out, "            ");
+				print_fitness(out, w->gs, w->gladiator_count);
+			}
 
 			tick = 0;
 			w->generation++;
@@ -615,8 +647,8 @@ int main(int argc, char **argv)
 	bool log_level_set = false;
 	int log_level = program_log_level;
 	bool run_headless = false;
-
 	int i;
+
 	for(i = 1; i < argc && argv[i][0] == '-'; i++)
 		switch(argv[i][1]) {
 		case '\0': /* stop argument processing */
@@ -626,7 +658,7 @@ int main(int argc, char **argv)
 			log_level_set = true;
 			break;
 		case 's':
-			fprintf(stderr, "saving configuration file to '%s'\n", default_config_file);
+			note("saving configuration file to '%s'", default_config_file);
 			return !save_config_to_default_config_file();
 		case 'p':
 			return save_config(stdout);

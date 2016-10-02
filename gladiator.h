@@ -12,29 +12,27 @@
 #include "util.h"
 
 typedef struct {
-	double x, y; /*position of gladiator*/
-	double orientation; /*direction of gladiator*/
-	double field_of_view; /*angle of gladiators eye*/
-	double health; /*health of this gladiator*/
-	double radius; /*size of this gladiator*/
-	unsigned team; /*this gladiators team*/
-	unsigned hits; /*hits the gladiator scored on other gladiators*/
-	unsigned foods;
-	double energy; /*energy of gladiator, needed to fire weapon*/
-	bool enemy_gladiator_detected;
-	bool enemy_projectile_detected;
-	bool food_detected;
-	double state1; /*internal state, experimental*/
-	unsigned rank; /*when the gladiator died, if it did*/
-	unsigned mutations; /*mutations from previous round*/
-	unsigned total_mutations; /*total mutations*/
-	double fitness; /*parents fitness level*/
-	brain_t *brain;
-	tick_timer_t wall_contact_timer;
+	double x, y; /**< position of gladiator*/
+	double orientation; /**< direction of gladiator*/
+	double field_of_view; /**< angle of gladiators eye*/
+	double health; /**< health of this gladiator*/
+	double radius; /**< size of this gladiator*/
+	unsigned team; /**< this gladiators team*/
+	unsigned hits; /**< hits the gladiator scored on other gladiators*/
+	unsigned foods; /**< number of food items collected*/
+	double energy; /**< energy of gladiator, needed to fire weapon*/
+	bool enemy_gladiator_detected; /**< set true if enemy has been detected*/
+	bool enemy_projectile_detected; /**< set true if enemy projectile has been detected*/
+	bool food_detected; /**< set true if food has been detected */
+	double state1; /**< internal state, experimental*/
+	unsigned rank; /**< when the gladiator died, if it did*/
+	unsigned mutations; /**< mutations from previous round*/
+	unsigned total_mutations; /**< total mutations*/
+	double fitness; /**< parents fitness level*/
+	brain_t *brain; /**< the gladiators brain*/
+	timer_tick_t wall_contact_timer; /**< timer for the amount of gladiator has been in contact with the wall*/
 } gladiator_t;
 
-/**@todo input of whether we fired last cycle? more fire related input needs to
- * be added. */
 #define X_MACRO_GLADIATOR_INPUTS\
 	X(GLADIATOR_IN_VISION_ENEMY,       "detect hostile gladiator")\
 	X(GLADIATOR_IN_VISION_PROJECTILE,  "detect hostile projectile")\
@@ -52,7 +50,6 @@ typedef struct {
 	X(GLADIATOR_IN_LAST_INPUT,         "INVALID INPUT")
 
 typedef enum {
-	/**@note more inputs, such as current fitness level, could be added*/
 #define X(ENUM, DESCRIPTION) ENUM,
 	X_MACRO_GLADIATOR_INPUTS
 #undef X
@@ -84,6 +81,5 @@ unsigned gladiator_mutate(gladiator_t *g);
 bool gladiator_is_dead(gladiator_t *g);
 const char *lookup_gladiator_io_name(bool lookup_input, unsigned port);
 gladiator_t *gladiator_breed(gladiator_t *a, gladiator_t *b);
-
 
 #endif

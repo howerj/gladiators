@@ -103,8 +103,9 @@ void gladiator_update(gladiator_t *g, const double inputs[], double outputs[])
 	update_orientation(g, outputs);
 	update_distance(g, outputs);
 	if(arena_wraps_at_edges == false && (g->x == Xmax || g->x == Xmin || g->y == Ymax || g->y == Ymin))
-		tick_timer(&g->wall_contact_timer);
-
+		timer_tick(&g->wall_contact_timer);
+	else if(!timer_result(&g->wall_contact_timer))
+		timer_untick(&g->wall_contact_timer);
 }
 
 void gladiator_draw(gladiator_t *g)
@@ -140,7 +141,7 @@ gladiator_t *gladiator_new(unsigned team, double x, double y, double orientation
 	g->radius = gladiator_size;
 	size_t length = MAX(gladiator_brain_length, GLADIATOR_IN_LAST_INPUT);
 	length = MAX(length, GLADIATOR_OUT_LAST_OUTPUT);
-	g->brain = brain_new(true, length, gladiator_brain_depth);
+	g->brain = brain_new(true, true, length, gladiator_brain_depth);
 	return g;
 }
 
@@ -178,7 +179,7 @@ double gladiator_fitness(gladiator_t *g)
 	fitness += g->energy * fitness_weight_energy;
 	fitness += g->foods  * fitness_weight_food;
 	fitness += g->rank   * fitness_weight_rank;
-	fitness += tick_result(&g->wall_contact_timer) * fitness_weight_wall_time;
+	fitness += timer_result(&g->wall_contact_timer) * fitness_weight_wall_time;
 	return fitness;
 }
 

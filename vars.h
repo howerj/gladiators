@@ -19,7 +19,8 @@ typedef enum {
 	ALL_MESSAGES_ON,
 } verbosity_t;
 
-/* @todo A GUI menu system could be created from this list, potentially*/
+/**@note A GUI menu system could be created from this list, potentially*/
+/**@todo make the control keys configurable, such as "q" to quit */
 #define CONFIG_X_MACRO\
 	X(unsigned,  arena_food_count,                   4,       false)\
 	X(unsigned,  arena_gladiator_count,              3,       false)\
@@ -28,8 +29,8 @@ typedef enum {
 	X(double,    arena_tick_ms,                      15.0,    true)\
 	X(bool,      arena_wraps_at_edges,               false,   true)\
 	X(unsigned,  brain_activation_function,          0,       true)\
+	X(unsigned,  brain_input_normalization_method,   1,       true)\
 	X(double,    brain_max_weight_increment,         2.0,     false)\
-	X(bool,      brain_normalize_inputs,             true,    true)\
 	X(double,    detection_lines,                    100.0,   false)\
 	X(bool,      draw_gladiator_collision,           true,    true)\
 	X(bool,      draw_gladiator_target_lines,        true,    true)\
@@ -68,7 +69,6 @@ typedef enum {
 	X(double,    gladiator_wall_time,                1000.0,  true)\
 	X(double,    max_ticks_per_generation,           4000.0,  false)\
 	X(double,    mutation_rate,                      0.075,   true)\
-	X(bool,      use_crossover,                      false,   true)\
 	X(bool,      print_arena_tick,                   true,    true)\
 	X(bool,      print_fps,                          true,    true)\
 	X(bool,      print_generation,                   true,    true)\
@@ -97,6 +97,7 @@ typedef enum {
 	X(double,    projectile_energy_cost,             150.0,   true)\
 	X(double,    projectile_range,                   400.0,   true)\
 	X(double,    projectile_size,                    2.0,     true)\
+	X(bool,      use_crossover,                      false,   true)\
 	X(double,    window_height,                      400.0,   true)\
 	X(double,    window_width,                       600.0,   true)\
 	X(double,    window_x_starting_position,         60.0,    true)\

@@ -34,13 +34,18 @@ CONFIG_X_MACRO
 	{ end_e, NULL, NULL, false }
 };
 
-#define MESSAGE(LEVEL)\
+static const bool logging_prepend_level = true;
+
+#define MESSAGE(PREPEND, FMT, LEVEL)\
 	do {\
+		assert(FMT);\
 		if(!verbose(LEVEL))\
 			return;\
+		if(logging_prepend_level)\
+			fputs((PREPEND), stderr);\
 		va_list args;\
-		va_start(args, fmt);\
-		vfprintf(stderr, fmt, args);\
+		va_start(args, FMT);\
+		vfprintf(stderr, (FMT), args);\
 		va_end(args);\
 		fputc('\n', stderr);\
 	} while(0);
@@ -50,26 +55,23 @@ void error(const char *fmt, ...)
 	assert(fmt);
 	if(!verbose(ERROR))
 		exit(EXIT_FAILURE);
-	MESSAGE(ERROR);
+	MESSAGE("error: ", fmt, ERROR);
 	exit(EXIT_FAILURE);
 }
 
 void warning(const char *fmt, ...)
 {
-	assert(fmt);
-	MESSAGE(WARNING);
+	MESSAGE("warning: ", fmt, WARNING);
 }
 
 void note(const char *fmt, ...)
 {
-	assert(fmt);
-	MESSAGE(NOTE);
+	MESSAGE("note: ", fmt, NOTE);
 }
 
 void debug(const char *fmt, ...)
 {
-	assert(fmt);
-	MESSAGE(DEBUG);
+	MESSAGE("debug: ", fmt, DEBUG);
 }
 
 bool verbose(verbosity_t v)
@@ -182,15 +184,20 @@ bool save_config(FILE *out)
 {
 	assert(out);
 	for(size_t i = 0; db[i].type != end_e; i++) {
+		int r = 0;
 		assert(db[i].addr);
 		switch(db[i].type) {
-		case double_e:   fprintf(out, "%s %f\n", db[i].name, *(double*)db[i].addr);   break;
-		case bool_e:     fprintf(out, "%s %u\n", db[i].name, *(bool*)db[i].addr);     break;
-		case int_e:      fprintf(out, "%s %d\n", db[i].name, *(int*)db[i].addr);      break;
-		case unsigned_e: fprintf(out, "%s %u\n", db[i].name, *(unsigned*)db[i].addr); break;
+		case double_e:   r = fprintf(out, "%s %f\n", db[i].name, *(double*)db[i].addr);   break;
+		case bool_e:     r = fprintf(out, "%s %u\n", db[i].name, *(bool*)db[i].addr);     break;
+		case int_e:      r = fprintf(out, "%s %d\n", db[i].name, *(int*)db[i].addr);      break;
+		case unsigned_e: r = fprintf(out, "%s %u\n", db[i].name, *(unsigned*)db[i].addr); break;
 		case end_e:      break;
 		default:
 			error("invalid configuration item type '%d'", db[i].type);
+		}
+		if(r < 0) {
+			warning("configuration saving failed: %d\n", r);
+			return false;
 		}
 	}
 	return true;

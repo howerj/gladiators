@@ -23,7 +23,12 @@ run: ${TARGET}
 gladiator.conf: ${TARGET}
 	./${TARGET} -s
 
+doc: gladiator.htm
+
+gladiator.htm: readme.md
+	markdown $^ | tee $@
+
 -include ${DEPS}
 
 clean:
-	${RM} -f *.o *.d *.out ${TARGET}
+	${RM} -f *.o *.d *.out ${TARGET} *.htm vgcore.* core

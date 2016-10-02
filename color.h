@@ -7,8 +7,6 @@
 #ifndef COLOR_H
 #define COLOR_H
 
-/**@todo Make RGB struct */
-
 typedef enum {
 	WHITE,
 	RED,

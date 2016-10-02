@@ -6,6 +6,7 @@
 
 #include "util.h"
 #include <assert.h>
+#include <ctype.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
@@ -22,6 +23,7 @@ typedef struct prng_t prng_t;
 static void fatal(char *fmt, ...)
 {
 	va_list args;
+	assert(fmt);
 	va_start(args, fmt);
 	vfprintf(stderr, fmt, args);
 	va_end(args);
@@ -31,6 +33,7 @@ static void fatal(char *fmt, ...)
 
 void *allocate(size_t sz)
 {
+	assert(sz);
 	void *r = calloc(sz, 1);
 	if(!r)
 		fatal("allocation failed of size %zu\n", sz);
@@ -110,16 +113,25 @@ double wrap_rad(double rad)
 	return rad;
 }
 
-bool tick_timer(tick_timer_t *t)
+bool timer_tick(timer_tick_t *t)
 {
+	assert(t);
 	if(t->i > t->max)
 		return true;
 	t->i++;
 	return false;
 }
 
-bool tick_result(tick_timer_t *t)
+void timer_untick(timer_tick_t *t)
 {
+	assert(t);
+	if(t->i > 0)
+		t->i--;
+}
+
+bool timer_result(timer_tick_t *t)
+{
+	assert(t);
 	return t->i > t->max;
 }
 
@@ -198,7 +210,8 @@ cell_t *car(cell_t *cons)
 
 cell_t *cdr(cell_t *cons)
 {
-	assert(cons && type(cons) == CONS);
+	assert(cons); 
+	assert(type(cons) == CONS);
 	cell_t *r = cons->p.cons.cdr;
 	assert(r);
 	return r;
@@ -221,6 +234,7 @@ cell_t *cell_new(cell_type_e type)
 	assert(type < INVALID_CELL_TYPE);
 	cell_t *c = allocate(sizeof(*c));
 	c->type = type;
+	c->freeable = true;
 	return c;
 }
 
@@ -284,6 +298,47 @@ cell_t *nil(void)
 	return &n;
 }
 
+bool cell_eq(cell_t *a, cell_t *b)
+{
+	cell_type_e at = type(a);
+	if(at != type(b))
+		return false;
+	switch(at) {
+	case NIL:
+		return true;
+	case INTEGER:
+		return a->p.integer == b->p.integer;
+	case FLOAT:
+		return a->p.floating == b->p.floating;
+	case SYMBOL:
+	case STRING:
+		return !strcmp(a->p.string, b->p.string);
+	case CONS:
+		return a == b;
+	default:
+		break;
+	}
+	fatal("invalid cell type: %d", (int)at);
+	return false;
+}
+
+size_t cell_length(cell_t *c)
+{
+	assert(type(c) == CONS);
+	size_t i;
+	for(i = 0; c->type != NIL ; i++, c = cdr(c))
+		/*do nothing*/;
+	return i;
+}
+
+cell_t *nth(cell_t *c, size_t n)
+{
+	assert((type(c) == NIL) || type(c) == CONS);
+	for(size_t i = 0; i < n && c->type != NIL; i++, c = cdr(c))
+		/*do nothing*/;
+	return type(c) == NIL ? c : car(c);
+}
+
 void cell_delete(cell_t *cell)
 {
 	if(!cell)
@@ -292,18 +347,23 @@ void cell_delete(cell_t *cell)
 	case NIL:
 		return;
 	case INTEGER:
-	case FLOAT:   free(cell); 
-		      return;
+	case FLOAT:   
+		if(cell->freeable)
+			free(cell); 
+		return;
 	case SYMBOL:  
 	case STRING: 
+		if(cell->freeable) {
 		      free(cell->p.string);
 		      free(cell);
-		      return;
+		}
+		return;
 	case CONS:
-		      cell_delete(cell->p.cons.car);
-		      cell_delete(cell->p.cons.cdr);
+		cell_delete(cell->p.cons.car);
+		cell_delete(cell->p.cons.cdr);
+		if(cell->freeable)
 		      free(cell);
-		      return;
+		return;
 	default:
 		fatal("unknown type '%u'", cell->type);
 	}
@@ -524,8 +584,9 @@ static int _write_s_expression_to_file(cell_t *cell, FILE *output, unsigned dept
 	case CONS:
 	{
 		int r = 1, f = 0;
-		if((f = fputc('\n', output)) < 0)
-			return f;
+		if(depth)
+			if((f = fputc('\n', output)) < 0)
+				return f;
 		if((f = indent(depth, output)) < 0)
 			return f;
 		r += f;
@@ -550,4 +611,205 @@ int write_s_expression_to_file(cell_t *cell, FILE *output)
 {
 	return _write_s_expression_to_file(cell, output, 0);
 }
+
+int scanner(cell_t *c, const char *fmt, ...)
+{
+	va_list ap;
+	va_start(ap, fmt);
+	int r = vscanner(c, fmt, ap);
+	va_end(ap);
+	return r;
+}
+
+static const char *type2name(cell_type_e t)
+{
+	assert(t >= 0 && t < INVALID_CELL_TYPE);
+	static const char *name[] = {
+		[NIL]     = "nil",
+		[INTEGER] = "integer",
+		[FLOAT]   = "float",
+		[SYMBOL]  = "symbol",
+		[STRING]  = "string",
+		[CONS]    = "cons",
+	};
+	return name[t];
+}
+
+#define expect(CELL, TYPE) _expect((CELL), (TYPE), __FILE__, __func__, __LINE__)
+static int _expect(cell_t *c, cell_type_e t, const char *file, const char *func, unsigned line) 
+{
+	if(t == type(c))
+		return 1;
+	fprintf(stderr, "%s:%s:%d, expected %s / got %s\n", file, func, line, type2name(t), type2name(type(c)));
+	if(type(c) == STRING || type(c) == SYMBOL)
+		fprintf(stderr, "%s: %s\n", type(c) == SYMBOL ? "symbol" : "string",  c->p.string);
+	if(type(c) == CONS) {
+		write_s_expression_to_file(c, stderr);
+		fputc('\n', stderr);
+	}
+	return 0;
+}
+
+/** @brief Scan and validate S-Expression input
+ *  @todo make a printer like version
+ *
+ * Example usage:
+ * 	int alpha = 0;
+ * 	char *bravo = NULL;
+ * 	scanner(cell, "(%x (alpha %d) (bravo %s) ("charlie" %*f))", &alpha, &bravo);
+ *
+ *  n = nil
+ *  c = cons 
+ *  l = list
+ *  x = any
+ *  f = float
+ *  d = integer
+ *  s = string
+ *  S = symbol
+ */
+int _vscanner(cell_t *c, int i, const char *fmt, va_list ap)
+{
+	char f;
+	assert(c && fmt && ap && type(c) == CONS);
+	while((f = fmt[i])) {
+		if(isspace(f)) {
+			i++;
+			continue;
+		}
+		if(')' == f) {
+			if(expect(c, NIL))
+				return i;
+			else
+				return -1;
+		}
+		if(!expect(c, CONS))
+			return -1;
+		if('%' == (f = fmt[i])) {
+			bool ignore = false;
+			if('*' == (f = fmt[++i])) {
+				i++;
+				ignore = true;
+			}
+
+			cell_t *ca = car(c);
+			switch((f = fmt[i])) {
+			case 'l':
+			case 'c':
+			{
+				bool list = f == 'l';
+				if(!expect(list ? c : ca, CONS))
+					return -1;
+				if(ignore)
+					break;
+				cell_t **v = va_arg(ap, cell_t **);
+				*v = list ? c : ca;
+				if(list)
+					return i;
+				break;
+			}
+			case 'x':
+			{
+				cell_t **v = va_arg(ap, cell_t **);
+				if(ignore)
+					break;
+				*v = ca;
+				break;
+			}
+			case 'f':
+			{
+				if(!expect(ca, FLOAT))
+					return -1;
+				if(ignore)
+					break;
+				double *d = va_arg(ap, double *);
+				*d = FLT(ca);
+				break;
+			}
+			case 'u':
+			case 'd':
+			{
+				if(!expect(ca, INTEGER))
+					return -1;
+				if(ignore)
+					break;
+				int *dp = va_arg(ap, int *);
+				int d = INT(ca);
+				*dp = d;
+				if(f == 'u' && d < 0) {
+					fprintf(stderr, "expected unsigned number (got %d)\n", d);
+					return -1;
+				}
+				break;
+			}
+			case 's':
+			{
+				if(!expect(ca, STRING))
+					return -1;
+				if(ignore)
+					break;
+				char **s = va_arg(ap, char **);
+				*s = STR(ca);
+				break;
+			}
+			case 'S':
+			{
+				if(!expect(ca, SYMBOL))
+					return -1;
+				if(ignore)
+					break;
+				char **s = va_arg(ap, char **);
+				*s = STR(c);
+				break;
+			}
+			case 'n':
+			{
+				if(!expect(ca, NIL))
+				break;
+			}
+			case '\0':
+			default:
+				fatal("invalid format specifier %u/%c", f, f);
+			}
+			i++;
+		} else if('(' == f) {
+			if(!expect(car(c), CONS))
+				return -1;
+			int r = _vscanner(car(c), ++i, fmt, ap);
+			if(r < 0)
+				return r;
+			i += (r-i+1);
+		} else {
+			char s[CELL_MAX_STRING_LENGTH] = { 0 };
+			/**@todo integer and float literals */
+			if(f == '"') { /* string literal */
+				size_t j = 0;
+				if(!expect(car(c), STRING))
+					return -1;
+				while(strchr("\"", fmt[i])) {
+					if(fmt[i] == '\\') /**@todo proper processing of this format strings */
+						i++;
+					s[j++] = fmt[i++];
+				}
+				if(strcmp(STR(car(c)), s))
+					return -1;
+			} else { /* symbol literal */
+				size_t j = 0;
+				if(!expect(car(c), SYMBOL))
+					return -1;
+				while(!strchr("()*%\" \t\n\r\v", fmt[i]))
+					s[j++] = fmt[i++];
+				if(strcmp(SYM(car(c)), s))
+					return -1;
+			}
+		}
+		c = cdr(c);
+	}
+	return i;
+}
+
+int vscanner(cell_t *c, const char *fmt, va_list ap)
+{
+	return _vscanner(c, 0, fmt, ap);
+}
+
 

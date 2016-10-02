@@ -11,12 +11,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-/**@todo load and save brains to disk*/
-
 typedef struct {
 	size_t weight_count;
 	double bias;
-	double threshold; /**@note not used at the moment*/
+	double alpha; /**< arbitrary parameter for neurons function */
 	double weights[];
 } neuron_t;
 
@@ -35,6 +33,8 @@ struct brain_t {
 
 static double randomer(double original)
 {
+	/**@note the method by which mutations happen could be configurable,
+	 * but I believe that this might be the best method */
 	double r = random_float() * brain_max_weight_increment;
 	if(random_float() < 0.5)
 		r *= -1;
@@ -48,11 +48,11 @@ static double randomer(double original)
 static neuron_t *neuron_new(bool rand, size_t length)
 {
 	neuron_t *n = allocate(sizeof(*n) + sizeof(n->weights[0])*length);
-	n->bias      = rand ? randomer(n->bias) : 1.0;
-	n->threshold = rand ? randomer(n->threshold) : 1.0;
+	n->bias         = rand ? randomer(n->bias)  : 1.0;
+	n->alpha        = rand ? randomer(n->alpha) : 1.0;
 	n->weight_count = length;
 	for(size_t i = 0; i < length; i++)
-		n->weights[i] = rand ? randomer(n->threshold) : 1.0; 
+		n->weights[i] = rand ? randomer(n->weights[i]) : 1.0; 
 	return n;
 }
 
@@ -61,22 +61,24 @@ static void neuron_delete(neuron_t *n)
 	free(n);
 }
 
-static layer_t *layer_new(bool rand, size_t length)
+static layer_t *layer_new(bool alloc_neurons, bool rand, size_t length)
 {
 	layer_t *l = allocate(sizeof(*l));
 	l->length  = length;
 	l->outputs = allocate(sizeof(l->outputs[0]) * length);
 	l->neurons = allocate(sizeof(l->neurons[0]) * length); 
-	for(size_t i = 0; i < length; i++)
+	for(size_t i = 0; alloc_neurons && i < length; i++)
 		l->neurons[i] = neuron_new(rand, length);
 	return l;
 }
 
 static void layer_delete(layer_t *l)
 {
-	assert(l);
-	for(size_t i = 0; i < l->length; i++)
-		neuron_delete(l->neurons[i]);
+	if(!l)
+		return;
+	if(l->neurons)
+		for(size_t i = 0; i < l->length; i++)
+			neuron_delete(l->neurons[i]);
 	free(l->neurons);
 	free(l->outputs);
 	free(l);
@@ -87,14 +89,14 @@ static void neuron_copy_over(neuron_t *dst, const neuron_t *src)
 	assert(dst && src);
 	dst->bias = src->bias;
 	dst->weight_count = src->weight_count;
-	dst->threshold = src->threshold;
+	dst->alpha = src->alpha;
 	for(size_t i = 0; i < src->weight_count; i++)
 		dst->weights[i] = src->weights[i];
 }
 
 static layer_t *layer_copy(layer_t *l)
 {
-	layer_t *n = layer_new(false, l->length);
+	layer_t *n = layer_new(true, false, l->length);
 	for(size_t i = 0; i < l->length; i++)
 		neuron_copy_over(n->neurons[i], l->neurons[i]);
 	return n;
@@ -115,17 +117,29 @@ static void neuron_mutate(neuron_t *n, size_t depth, unsigned *count)
 {
 	assert(n && count);
 	n->bias = mutation(n->bias, n->weight_count*depth, count);
-	n->threshold = mutation(n->bias, n->weight_count*depth, count);
+	n->alpha = mutation(n->bias, n->weight_count*depth, count);
 	for(size_t i = 0; i < n->weight_count; i++)
 		n->weights[i] = mutation(n->weights[i], n->weight_count*depth, count);
 }
 
+/**@note these will eventually be removed, when the converse of the scanner
+ * function is made */
+static cell_t c_weights = { .type = SYMBOL, .p.string = "weights" };
+static cell_t c_neuron  = { .type = SYMBOL, .p.string = "neuron" };
+static cell_t c_bias    = { .type = SYMBOL, .p.string = "bias" };
+static cell_t c_alpha   = { .type = SYMBOL, .p.string = "alpha" };
+static cell_t c_layer   = { .type = SYMBOL, .p.string = "layer" };
+static cell_t c_layers  = { .type = SYMBOL, .p.string = "layers" };
+static cell_t c_brain   = { .type = SYMBOL, .p.string = "brain" };
+static cell_t c_depth   = { .type = SYMBOL, .p.string = "depth" };
+static cell_t c_length  = { .type = SYMBOL, .p.string = "length" };
+
 static cell_t *neuron_serialize(neuron_t *n)
 {
-	cell_t *head = cons(mksym("weights"), nil());
-	cell_t *r = mklist(mksym("neuron"),
-		mklist(mksym("bias"),      mkfloat(n->bias), NULL),
-		mklist(mksym("threshold"), mkfloat(n->threshold), NULL), 
+	cell_t *head = cons(&c_weights, nil());
+	cell_t *r = mklist(&c_neuron,
+		mklist(&c_bias,  mkfloat(n->bias), NULL),
+		mklist(&c_alpha, mkfloat(n->alpha), NULL), 
 		head, NULL);
 	cell_t *op = head;
 	for(size_t i = 0; i < n->weight_count; op = cdr(op), i++)
@@ -136,48 +150,43 @@ static cell_t *neuron_serialize(neuron_t *n)
 static cell_t *layer_serialize(layer_t *layer)
 {
 	assert(layer);
-	cell_t *head = cons(mksym("layer"), nil());
+	cell_t *head = cons(&c_layer, nil());
 	cell_t *op   = head;
 	for(size_t i = 0; i < layer->length; op = cdr(op), i++)
 		setcdr(op, cons(neuron_serialize(layer->neurons[i]), nil()));
 	return head;
 }
 
-int brain_save(FILE *output, brain_t *b)
+cell_t *brain_serialize(brain_t *b)
 {
-	cell_t *head = cons(mksym("layers"), nil());
-	cell_t *r    = mklist(mksym("brain"),
-			mklist(mksym("depth"),  mkint(b->depth),  NULL),
-			mklist(mksym("length"), mkint(b->length), NULL),
+	cell_t *head = cons(&c_layers, nil());
+	cell_t *r    = mklist(&c_brain,
+			mklist(&c_depth,  mkint(b->depth),  NULL),
+			mklist(&c_length, mkint(b->length), NULL),
 			head,
 			NULL);
 	cell_t *op = head;
 	for(size_t i = 0; i < b->depth; op = cdr(op), i++)
 		setcdr(op, cons(layer_serialize(b->layers[i]), nil()));
-	int rval = write_s_expression_to_file(r, output);
-	cell_delete(r);
-	return rval;
+	return r;
 }
 
-brain_t *brain_new(bool rand, size_t length, size_t depth)
+brain_t *brain_new(bool alloc_layers, bool rand, size_t length, size_t depth)
 {
-	assert(length && depth);
 	brain_t *b   = allocate(sizeof(*b));
-	b->length    = length;
-	b->depth     = depth < 2 ? 2 : depth;
+	b->length    = length < 1 ? 1 : length;
+	b->depth     = depth  < 2 ? 2 : depth;
 	b->inputs    = allocate(sizeof(b->inputs[0]) * length);
 	b->layers    = allocate(sizeof(b->layers[0]) * depth);
-	for(size_t i = 0; i < b->depth; i++)
-		b->layers[i] = layer_new(rand, length);
-	if(verbose(DEBUG) && rand)
-		brain_save(stdout, b);
+	for(size_t i = 0; alloc_layers && i < b->depth; i++)
+		b->layers[i] = layer_new(true, rand, length);
 	return b;
 }
 
 brain_t *brain_copy(const brain_t *b)
 {
 	assert(b);
-	brain_t *n = brain_new(false, b->length, b->depth);
+	brain_t *n = brain_new(false, false, b->length, b->depth);
 	for(size_t i = 0; i < b->depth; i++)
 		n->layers[i] = layer_copy(b->layers[i]);
 	return n;
@@ -188,8 +197,9 @@ void brain_delete(brain_t *b)
 	if(!b)
 		return;
 	free(b->inputs);
-	for(size_t i = 0; i < b->depth; i++)
-		layer_delete(b->layers[i]);
+	if(b->layers)
+		for(size_t i = 0; i < b->depth; i++)
+			layer_delete(b->layers[i]);
 	free(b);
 }
 
@@ -260,28 +270,68 @@ unsigned brain_mutate(brain_t *b)
 
 neuron_t *neuron_deserialize(cell_t *c, size_t length)
 {
-	UNUSED(c);
-	UNUSED(length);
-	/**@todo implement this; neuron_load*/
+	double bias = 0, alpha = 0;
+	cell_t *weights;
+	int r = scanner(c, "neuron (bias %f) (alpha %f) (weights %l)", &bias, &alpha, &weights);
+	if(r < 0 || !weights) {
+		fprintf(stderr, "neuron deserialization failed: %d\n", r);
+		return NULL;
+	}
+	neuron_t *n = neuron_new(false, length);
+	for(size_t i =0 ; type(weights) != NIL && i < length; i++, weights = cdr(weights)) {
+		if(type(car(weights)) != FLOAT) {
+			fprintf(stderr, "incorrect weight type");
+			goto fail;
+		}
+		n->weights[i] = FLT(car(weights));
+	}
+	return n;
+fail:
+	neuron_delete(n);
 	return NULL;
 }
 
 layer_t *layer_deserialize(cell_t *c, size_t length)
 {
-	UNUSED(c);
-	UNUSED(length);
-	/**@todo implement this; layer_load*/
+	layer_t *l = layer_new(false, false, length);
+	c = cdr(c);
+	for(size_t i = 0; type(c) != NIL && i < length; i++, c = cdr(c)) {
+		l->neurons[i] = neuron_deserialize(car(c), length);
+		if(!(l->neurons[i])) {
+			fprintf(stderr, "layer deserialization failed\n");
+			goto fail;
+		}
+	}
+	return l;
+fail:
+	layer_delete(l);
 	return NULL;
 }
 
-brain_t *brain_load(FILE *input)
+brain_t *brain_deserialize(cell_t *c)
 {
-	size_t depth = 0, length = 0;
-	brain_t *b = brain_new(false, depth, length);
-	cell_t *c = read_s_expression_from_file(input);
-	/**@todo implement this; brain_load*/
-	cell_delete(c);
+	unsigned depth = 0, length = 0;
+	cell_t *layers = NULL;
+	int r = scanner(c, "brain (depth %u) (length %u) (layers %l ) ", &depth, &length, &layers);
+	if(r < 0 || layers == NULL)
+		return NULL;
+	brain_t *b = brain_new(false, false, depth, length);
+	unsigned i;
+	for(i = 0; type(layers) != NIL; i++, layers = cdr(layers)) {
+		if(type(car(layers)) != CONS) {
+			fprintf(stderr, "invalid configuration: layer is not list\n");
+			return NULL;
+		}
+		b->layers[i] = layer_deserialize(car(layers), length);
+		if(!b->layers[i]) {
+			fprintf(stderr, "layers deserialization failed\n");
+			goto fail;
+		}
+	}
 	return b;
+fail:
+	brain_delete(b);
+	return NULL;
 }
 
 /**@note different crossover strategies should be experimented with, either

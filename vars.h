@@ -64,7 +64,7 @@ typedef enum {
 	X(double,    gladiator_min_field_of_view,        0.15,    true)\
 	X(double,    gladiator_size,                     3.0,     false)\
 	X(double,    gladiator_starting_energy,          0.0,     true)\
-	X(double,    gladiator_turn_rate_divisor,        12.0,    false)\
+	X(double,    gladiator_turn_rate_divisor,        6.0,    false)\
 	X(double,    gladiator_vision,                   400.0,   true)\
 	X(double,    gladiator_wall_time,                1000.0,  true)\
 	X(double,    max_ticks_per_generation,           4000.0,  false)\
@@ -97,6 +97,14 @@ typedef enum {
 	X(double,    projectile_energy_cost,             150.0,   true)\
 	X(double,    projectile_range,                   400.0,   true)\
 	X(double,    projectile_size,                    2.0,     true)\
+	X(bool,      player_active,                      false,   true)\
+	X(double,    player_distance_per_tick,           1.0,     true)\
+	X(double,    player_energy_increment,            1.0,     true)\
+	X(double,    player_health,                      2.0,     true)\
+	X(double,    player_max_energy,                  8000.0,  false)\
+	X(double,    player_size,                        3.0,     false)\
+	X(double,    player_starting_energy,             0.0,     true)\
+	X(double,    player_turn_rate_divisor,           6.0,    false)\
 	X(bool,      use_crossover,                      false,   true)\
 	X(double,    window_height,                      400.0,   true)\
 	X(double,    window_width,                       600.0,   true)\

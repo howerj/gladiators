@@ -10,7 +10,11 @@
  *  simulator - eg. what happens if I set these inputs, etc.)
  *  @todo allow the arena to be larger than the screen, and add a minimap
  *  @todo add a player object, and player led selection, and a networked
- *  version
+ *  version. It would be interesting to make it so the player has the same kind
+ *  of inputs and field of view as the gladiators, so they do not have the
+ *  advantage of being able to see the full screen.
+ *  @warning all code assumes Xmin and Ymin are zero and Ymax and Xmax are
+ *  equal...
  *  @todo Compile time options for headless version only
  *  @todo comment files*/
 
@@ -19,6 +23,7 @@
 #include "projectile.h"
 #include "collision.h"
 #include "food.h"
+#include "player.h"
 #include "vars.h"
 #include "gui.h"
 #include <assert.h>
@@ -34,11 +39,17 @@ typedef struct {
 	gladiator_t **gs;
 	projectile_t **ps;
 	food_t **fs;
+	player_t *player;
 	size_t gladiator_count;
 	size_t projectile_count;
 	size_t food_count;
 	unsigned generation;
 	unsigned alive;
+
+	bool player_fire;
+	bool player_forward;
+	bool player_left;
+	bool player_right;
 	/**@todo allow this to be saved and loaded from disk, along with the
 	 * configuration */
 } world_t;
@@ -79,6 +90,8 @@ static void keyboard_handler(unsigned char key, int x, int y)
 		  break;
 	case 'n': skip = true;
 		  break;
+	case ' ': world->player_fire = true;
+		  break;
 	case 'q':
 	case ESC:
 		exit(EXIT_SUCCESS);
@@ -91,7 +104,19 @@ static void keyboard_special_handler(int key, int x, int y)
 {
 	UNUSED(x);
 	UNUSED(y);
-	UNUSED(key);
+	switch(key) {
+	case GLUT_KEY_UP:
+		world->player_forward = true;
+		break;
+	case GLUT_KEY_LEFT:
+		world->player_left = true;
+		break;
+	case GLUT_KEY_RIGHT:
+		world->player_right = true;
+		break;
+	default:
+		break;
+	}
 }
 
 static void resize_window(int w, int h)
@@ -340,6 +365,13 @@ static void update_scene(world_t *w)
 	bool hits[w->projectile_count];
 	w->alive = 0;
 	memset(hits, 0, sizeof(hits[0]) * w->projectile_count);
+
+	player_update(w->player, w->player_fire, w->player_left, w->player_right, w->player_forward);
+	w->player_fire    = false;
+	w->player_left    = false;
+	w->player_right   = false;
+	w->player_forward = false;
+
 	for(unsigned i = 0; i < w->gladiator_count; i++)
 		if(!gladiator_is_dead(world->gs[i]))
 			w->alive++;
@@ -479,6 +511,9 @@ static void new_generation(world_t *w)
 		w->fs[i]->x = random_x();
 		w->fs[i]->y = random_y();
 	}
+
+	world->player->x = Xmax / 2.0;
+	world->player->y = Ymax / 2.0;
 }
 
 static void draw_scene(void)
@@ -497,6 +532,8 @@ static void draw_scene(void)
 
 	draw_debug_info(world);
 	draw_regular_polygon_line(Xmax/2, Ymax/2, PI/4, sqrt(Ymax*Ymax/2), SQUARE, 0.5, WHITE);
+
+	player_draw(world->player);
 
 	if(next != tick && (!arena_paused || step)) {
 		if(tick > max_ticks_per_generation || world->alive <= 1 || skip) {
@@ -530,6 +567,9 @@ static world_t *initialize_arena(size_t gladiator_and_projectile_count, size_t f
 	w->gs = allocate(sizeof(w->gs[0]) * gladiator_and_projectile_count);
 	w->ps = allocate(sizeof(w->ps[0]) * gladiator_and_projectile_count);
 	w->fs = allocate(sizeof(w->fs[0]) * food_count);
+	w->player = player_new(0);
+	w->player->x = Xmax / 2.0;
+	w->player->y = Ymax / 2.0;
 
 	if(arena_random_gladiator_start) {
 		for(size_t i = 0; i < gladiator_and_projectile_count; i++) {
@@ -637,6 +677,7 @@ When running in GUI mode there are a few commands that can issued:\n\
 \t's' run the simulation for a single tick\n\
 \t'q' quit the simulation\n\
 \n\
+In headless mode any human players (if enabled) are not present.\n\
 ";
 	fputs(help, stderr);
 }

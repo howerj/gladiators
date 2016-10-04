@@ -63,7 +63,9 @@ static void update_orientation(gladiator_t *g, double outputs[])
 static void update_distance(gladiator_t *g, double outputs[])
 {
 	assert(g && outputs);
-	/**@todo add inertia */
+	/**@todo add inertia, drag could also be added, a value that could be
+	 * changed to reflect traveling in water, or air. The physics section
+	 * and function really should be separated into another file. */
 	double distance = gladiator_distance_per_tick * outputs[GLADIATOR_OUT_MOVE_FORWARD];
 	distance = MAX(0, MIN(gladiator_distance_per_tick, distance));
 	g->x += distance * cos(g->orientation);

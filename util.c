@@ -42,6 +42,7 @@ void *allocate(size_t sz)
 
 char *duplicate(const char *s)
 {
+	assert(s);
 	size_t length = strlen(s);
 	char *r = allocate(length);
 	memcpy(r, s, length);

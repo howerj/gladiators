@@ -23,20 +23,18 @@ typedef enum {
 /**@todo make the control keys configurable, such as "q" to quit */
 #define CONFIG_X_MACRO\
 	X(unsigned,  arena_food_count,                   4,       false)\
-	X(unsigned,  arena_gladiator_count,              3,       false)\
+	X(unsigned,  arena_gladiator_count,              5,       false)\
 	X(bool,      arena_paused,                       false,   true)\
 	X(bool,      arena_random_gladiator_start,       true,    true)\
 	X(double,    arena_tick_ms,                      15.0,    true)\
 	X(bool,      arena_wraps_at_edges,               false,   true)\
-	X(unsigned,  brain_activation_function,          0,       true)\
+	X(unsigned,  brain_activation_function,          2,       true)\
 	X(unsigned,  brain_input_normalization_method,   1,       true)\
 	X(double,    brain_max_weight_increment,         2.0,     false)\
-	X(double,    detection_lines,                    100.0,   false)\
 	X(bool,      draw_gladiator_collision,           true,    true)\
 	X(bool,      draw_gladiator_target_lines,        true,    true)\
 	X(bool,      draw_gladiator_wall_collision,      true,    true)\
-	X(bool,      draw_line_circle_collision,         false,   true)\
-	X(bool,      draw_line_circle_debug_line,        false,   true)\
+	X(bool,      draw_circle_arc_debug_line,         false,   true)\
 	X(double,    fitness_weight_energy,              0.0,     true)\
 	X(double,    fitness_weight_food,                1.0,     true)\
 	X(double,    fitness_weight_health,              1.5,     true)\
@@ -51,20 +49,20 @@ typedef enum {
 	X(bool,      food_respawns,                      true,    true)\
 	X(double,    food_size,                          1.0,     false)\
 	X(unsigned,  gladiator_bounce_off_walls,         false,   true)\
-	X(unsigned,  gladiator_brain_depth,              2,       false)\
-	X(unsigned,  gladiator_brain_length,             10,      false)\
-	X(double,    gladiator_distance_per_tick,        1.0,     true)\
+	X(unsigned,  gladiator_brain_depth,              4,       false)\
+	X(unsigned,  gladiator_brain_length,             20,      false)\
+	X(double,    gladiator_distance_per_tick,        1.5,     true)\
 	X(double,    gladiator_energy_increment,         1.0,     true)\
-	X(double,    gladiator_field_of_view_divisor,    5.00,    false)\
+	X(double,    gladiator_field_of_view_divisor,    10.00,   false)\
 	X(double,    gladiator_fire_threshold,           0.50,    true)\
 	X(double,    gladiator_fire_timeout,             15.0,    true)\
 	X(double,    gladiator_health,                   2.0,     true)\
 	X(double,    gladiator_max_energy,               8000.0,  false)\
 	X(double,    gladiator_max_field_of_view,        1.0,     true)\
-	X(double,    gladiator_min_field_of_view,        0.15,    true)\
+	X(double,    gladiator_min_field_of_view,        0.05,    true)\
 	X(double,    gladiator_size,                     3.0,     false)\
 	X(double,    gladiator_starting_energy,          0.0,     true)\
-	X(double,    gladiator_turn_rate_divisor,        6.0,    false)\
+	X(double,    gladiator_turn_rate_divisor,        40.0,    false)\
 	X(double,    gladiator_vision,                   400.0,   true)\
 	X(double,    gladiator_wall_time,                1000.0,  true)\
 	X(double,    max_ticks_per_generation,           4000.0,  false)\
@@ -86,7 +84,7 @@ typedef enum {
 	X(bool,      print_gladiator_total_mutations,    true,    true)\
 	X(bool,      print_gladiator_x,                  false,   true)\
 	X(bool,      print_gladiator_y,                  false,   true)\
-	X(unsigned,  program_headless_loops,             50,      true)\
+	X(unsigned,  program_headless_loops,             100,     true)\
 	X(unsigned,  program_log_level,                  NOTE,    true)\
 	X(bool,      program_pause_after_new_generation, false,   true)\
 	X(double,    program_random_seed,                7.0,     true)\
@@ -94,7 +92,7 @@ typedef enum {
 	X(bool,      program_run_window_after_headless,  true,    true)\
 	X(double,    projectile_damage,                  1.0,     true)\
 	X(double,    projectile_distance_per_tick,       2.5,     true)\
-	X(double,    projectile_energy_cost,             150.0,   true)\
+	X(double,    projectile_energy_cost,             50.0,    true)\
 	X(double,    projectile_range,                   400.0,   true)\
 	X(double,    projectile_size,                    2.0,     true)\
 	X(bool,      player_active,                      false,   true)\
@@ -104,15 +102,15 @@ typedef enum {
 	X(double,    player_max_energy,                  8000.0,  false)\
 	X(double,    player_size,                        3.0,     false)\
 	X(double,    player_starting_energy,             0.0,     true)\
-	X(double,    player_turn_rate_divisor,           6.0,    false)\
-	X(bool,      use_crossover,                      false,   true)\
+	X(double,    player_turn_rate_divisor,           6.0,     false)\
+	X(bool,      use_crossover,                      true,    true)\
 	X(double,    window_height,                      400.0,   true)\
 	X(double,    window_width,                       600.0,   true)\
 	X(double,    window_x_starting_position,         60.0,    true)\
 	X(double,    window_y_starting_position,         20.0,    true)\
-	X(double,    Xmax,                               300.0,   false)\
+	X(double,    Xmax,                               400.0,   false)\
 	X(double,    Xmin,                               0.0,     true)\
-	X(double,    Ymax,                               300.0,   false)\
+	X(double,    Ymax,                               400.0,   false)\
 	X(double,    Ymin,                               0.0,     true)\
 
 #define X(TYPE, NAME, VALUE, ZERO_ALLOWED) extern TYPE NAME;

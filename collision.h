@@ -14,14 +14,8 @@ bool detect_circle_circle_collision(
 		double ax, double ay, double aradius,
 		double bx, double by, double bradius);
 
-bool detect_line_circle_intersection(
-		double orientation, bool use_orientation,
-		double Ax, double Ay,
-		double Bx, double By,
-		double Cx, double Cy, double Cradius, color_t color);
-
-bool detect_circle_cone_collision(
-		double kx, double ky, double korientation, double ksweep, unsigned lines, double klen,
-		double cx, double cy, double cradius, color_t color);
+bool detect_circle_arc_collision(
+		double kx, double ky, double korientation, double ksweep, double klen,
+		double cx, double cy, double cradius);
 
 #endif

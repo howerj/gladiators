@@ -250,10 +250,10 @@ static bool detect_gladiator(world_t *w, gladiator_t *k, bool detect_enemy_only)
 		assert(c);
 		if((detect_enemy_only && (k->team == c->team)) || gladiator_is_dead(c))
 			continue;
-		bool t = detect_circle_cone_collision(
+		bool t = detect_circle_arc_collision(
 				k->x, k->y, k->orientation, k->field_of_view, 
-				detection_lines, k->radius * gladiator_vision,
-				c->x, c->y, c->radius, team_to_color(k->team));
+				k->radius * gladiator_vision,
+				c->x, c->y, c->radius);
 		if(t)
 			return true;
 	}
@@ -268,10 +268,10 @@ static bool detect_enemy_projectile(world_t *w, gladiator_t *k)
 		assert(c);
 		if(k->team == c->team || !projectile_is_active(c))
 			continue;
-		bool t = detect_circle_cone_collision(
+		bool t = detect_circle_arc_collision(
 				k->x, k->y, k->orientation, k->field_of_view, 
-				detection_lines, k->radius*gladiator_vision,
-				c->x, c->y, c->radius, team_to_color(k->team));
+				k->radius*gladiator_vision,
+				c->x, c->y, c->radius);
 		if(t)
 			return true;
 	}
@@ -286,10 +286,10 @@ static bool detect_food(world_t *w, gladiator_t *k)
 		assert(f);
 		if(!food_is_active(f))
 			continue;
-		bool t = detect_circle_cone_collision(
+		bool t = detect_circle_arc_collision(
 				k->x, k->y, k->orientation, k->field_of_view, 
-				detection_lines, k->radius*gladiator_vision,
-				f->x, f->y, f->radius, team_to_color(k->team));
+				k->radius*gladiator_vision,
+				f->x, f->y, f->radius);
 		if(t)
 			return true;
 	}
@@ -689,7 +689,6 @@ int main(int argc, char **argv)
 	int log_level = program_log_level;
 	bool run_headless = false;
 	int i;
-
 	for(i = 1; i < argc && argv[i][0] == '-'; i++)
 		switch(argv[i][1]) {
 		case '\0': /* stop argument processing */

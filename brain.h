@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include "util.h"
+#include "sexpr.h"
 
 struct brain_t;
 typedef struct brain_t brain_t;

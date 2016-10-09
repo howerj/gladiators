@@ -195,18 +195,6 @@ continuous [random variable][] in the range [0, 1] multiplied by
 "brain\_max\_weight\_increment". There is then a 50% chance that this value
 will be added or subtracted from the current weight, bias or threshold. 
 
-* detection\_lines
-
-This variable might be removed in future releases as it is a symptom of an
-inefficient method used to detect arc-circle intersections. For now just 
-leave it at its default value. (by "arc" we mean [Circular Sector][]).
-
-The method used to detect these intersections involved drawing many lines from
-the center of the arc (which would be a gladiators field of view) outwards in
-increments of the angle of the gladiators field of view divided by the number
-of "detection\_lines". (by "center of the arc" we mean the point where the two
-straight lines of the "arc" meet).
-
 * draw\_gladiator\_collision
 
 If true a red circle will be drawn around each gladiator if two gladiators

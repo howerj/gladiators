@@ -125,22 +125,14 @@ static void neuron_mutate(neuron_t *n, size_t depth, unsigned *count)
 /**@note these will eventually be removed, when the converse of the scanner
  * function is made */
 static cell_t c_weights = { .type = SYMBOL, .p.string = "weights" };
-static cell_t c_neuron  = { .type = SYMBOL, .p.string = "neuron" };
-static cell_t c_bias    = { .type = SYMBOL, .p.string = "bias" };
-static cell_t c_alpha   = { .type = SYMBOL, .p.string = "alpha" };
 static cell_t c_layer   = { .type = SYMBOL, .p.string = "layer" };
 static cell_t c_layers  = { .type = SYMBOL, .p.string = "layers" };
-static cell_t c_brain   = { .type = SYMBOL, .p.string = "brain" };
-static cell_t c_depth   = { .type = SYMBOL, .p.string = "depth" };
-static cell_t c_length  = { .type = SYMBOL, .p.string = "length" };
 
 static cell_t *neuron_serialize(neuron_t *n)
 {
 	cell_t *head = cons(&c_weights, nil());
-	cell_t *r = mklist(&c_neuron,
-		mklist(&c_bias,  mkfloat(n->bias), NULL),
-		mklist(&c_alpha, mkfloat(n->alpha), NULL), 
-		head, NULL);
+	cell_t *r = printer("neuron (bias %f) (alpha %f) %x", n->bias, n->alpha, head);
+	assert(r);
 	cell_t *op = head;
 	for(size_t i = 0; i < n->weight_count; op = cdr(op), i++)
 		setcdr(op, cons(mkfloat(n->weights[i]), nil()));
@@ -160,11 +152,8 @@ static cell_t *layer_serialize(layer_t *layer)
 cell_t *brain_serialize(brain_t *b)
 {
 	cell_t *head = cons(&c_layers, nil());
-	cell_t *r    = mklist(&c_brain,
-			mklist(&c_depth,  mkint(b->depth),  NULL),
-			mklist(&c_length, mkint(b->length), NULL),
-			head,
-			NULL);
+	cell_t *r    = printer("brain (depth %d) (length %d) %x", (intptr_t)(b->depth), (intptr_t)(b->length), head);
+	assert(r);
 	cell_t *op = head;
 	for(size_t i = 0; i < b->depth; op = cdr(op), i++)
 		setcdr(op, cons(layer_serialize(b->layers[i]), nil()));
@@ -316,7 +305,7 @@ brain_t *brain_deserialize(cell_t *c)
 	int r = scanner(c, "brain (depth %u) (length %u) (layers %l ) ", &depth, &length, &layers);
 	if(r < 0 || layers == NULL)
 		return NULL;
-	brain_t *b = brain_new(false, false, depth, length);
+	brain_t *b = brain_new(false, false, length, depth);
 	unsigned i;
 	for(i = 0; type(layers) != NIL; i++, layers = cdr(layers)) {
 		if(type(car(layers)) != CONS) {

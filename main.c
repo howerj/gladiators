@@ -59,6 +59,112 @@ world_t *world;
 static unsigned tick = 0;
 static bool step = false, skip = false;
 
+cell_t *world_serialize(world_t *w)
+{
+	assert(w);
+	cell_t *gladiators = cons(mksym("gladiators"), nil());
+	cell_t *op   = gladiators;
+	for(size_t i = 0; i < w->gladiator_count; op = cdr(op), i++)
+		setcdr(op, cons(gladiator_serialize(w->gs[i]), nil()));
+	cell_t *projectiles = cons(mksym("projectiles"), nil());
+	op = projectiles;
+	for(size_t i = 0; i < w->projectile_count; op = cdr(op), i++)
+		setcdr(op, cons(projectile_serialize(w->ps[i]), nil()));
+	cell_t *foods = cons(mksym("foods"), nil());
+	op = foods;
+	for(size_t i = 0; i < w->food_count; op = cdr(op), i++)
+		setcdr(op, cons(food_serialize(w->fs[i]), nil()));
+	cell_t *c = printer(
+			"world %x %x %x %x"
+			"(gladiator-count %d) "
+			"(projectile-count %d) "
+			"(food-count %d) "
+			"(generation %d) "
+			"(alive %d) ", 
+			gladiators, projectiles, foods, player_serialize(w->player),
+			(intptr_t)(w->gladiator_count),
+			(intptr_t)(w->projectile_count),
+			(intptr_t)(w->food_count),
+			(intptr_t)(w->generation),
+			(intptr_t)(w->alive));
+	return c;
+}
+
+world_t *world_deserialize(cell_t *c)
+{
+	assert(c);
+	world_t *w = allocate(sizeof(*w));
+	cell_t *gs = NULL, *ps = NULL, *fs = NULL, *player = NULL;
+	uintptr_t gsc = 0, psc = 0, fsc = 0, generation = 0, alive = 0;
+	int r = scanner(c,
+		"world %x %x %x %x"
+		"(gladiator-count %d) "
+		"(projectile-count %d) "
+		"(food-count %d) "
+		"(generation %d) "
+		"(alive %d) ",
+		&gs, &ps, &fs, &player,
+		&gsc, &psc, &fsc,
+		&generation, &alive);
+	if(r < 0) {
+		warning("world deserialization failed for <%p>", c);
+		return NULL;
+	}
+
+	if(gsc)
+		w->gs = allocate(sizeof(*gs) * gsc);
+	if(psc)
+		w->ps = allocate(sizeof(*ps) * psc);
+	if(fsc)
+		w->fs = allocate(sizeof(*fs) * fsc);
+	if(gsc)
+		gs = cdr(gs);
+	size_t i;
+	for(i = 0 ; i < gsc && type(gs) != NIL; i++, gs = cdr(gs)) {
+		cell_type_e wt = type(car(gs));
+		if(wt != CONS || !(w->gs[i] = gladiator_deserialize(car(gs)))) {
+			warning("gladiator deserialization failed");
+			goto fail;
+		}
+	}	
+	if(i != gsc)
+		goto fail;
+	if(psc)
+		ps = cdr(ps);
+	for(i = 0 ; i < psc && type(ps) != NIL ; i++, ps = cdr(ps)) {
+		cell_type_e wt = type(car(ps));
+		if(wt != CONS || !(w->ps[i] = projectile_deserialize(car(ps)))) {
+			warning("projectile deserialization failed");
+			goto fail;
+		}
+	}
+	if(i != psc)
+		goto fail;
+	if(fsc)
+		fs = cdr(fs);
+	for(i = 0 ; i < fsc && type(fs) != NIL; i++, fs = cdr(fs)) {
+		cell_type_e wt = type(car(fs));
+		if(wt != CONS || !(w->fs[i] = food_deserialize(car(fs)))) {
+			warning("food deserialization failed");
+			goto fail;
+		}
+	}
+	if(i != fsc)
+		goto fail;
+	if(!(w->player = player_deserialize(player))) {
+		warning("player deserialization failed");
+		goto fail;
+	}
+	w->gladiator_count = gsc;
+	w->projectile_count = psc;
+	w->food_count = fsc;
+	w->generation = generation;
+	w->alive = alive;
+	return w;
+fail:
+	return NULL;
+}
+
 static double random_x(void)
 {
 	return random_float() * Xmax;
@@ -689,8 +795,6 @@ int main(int argc, char **argv)
 	int log_level = program_log_level;
 	bool run_headless = false;
 	int i;
-
-	return 0;
 	for(i = 1; i < argc && argv[i][0] == '-'; i++)
 		switch(argv[i][1]) {
 		case '\0': /* stop argument processing */
@@ -724,6 +828,15 @@ done:
 		program_log_level = log_level;
 
 	world = initialize_arena(arena_gladiator_count, arena_food_count);
+
+	cell_t *c = world_serialize(world);
+	write_s_expression_to_file(c, stdout);
+
+	world_t *w2 = world_deserialize(c);
+	c = world_serialize(w2);
+	write_s_expression_to_file(c, stdout);
+
+	return 0;
 
 	if(program_run_headless) {
 		headless_loop(world, stdout, program_headless_loops, program_headless_loops == 0);

@@ -6,10 +6,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-/**@todo clean this up, use longjmp for error handling 
- * @todo mini-lisp interpreter 
- * @todo Move this into another library?
- * @todo schema format*/
+/**@todo clean this up and review code, schema format, mini-lisp interpreter
+ * and deal with arrays. */
 
 typedef struct {
 	unsigned line_number;
@@ -688,8 +686,6 @@ cell_t *printer(const char *fmt, ...)
 	return c;
 }
 
-/**@todo needs a lot more testing, and a method of serializing arrays needs
- * devising*/
 static cell_t *_vprinter(int *i, const char *fmt, va_list ap) 
 {
 	char f;

@@ -203,3 +203,12 @@ bool save_config(FILE *out)
 	return true;
 }
 
+/* // Sort out dependency problem before doing this
+cell_t *config_serialize(void)
+{
+}
+
+void config_deserialize(cell_t *c)
+{
+}
+*/

@@ -150,7 +150,8 @@ gladiator_t *gladiator_new(unsigned team, double x, double y, double orientation
 void gladiator_delete(gladiator_t *g)
 {
 	assert(g);
-	brain_delete(g->brain);
+	if(g->brain)
+		brain_delete(g->brain);
 	free(g);
 }
 
@@ -195,4 +196,69 @@ gladiator_t *gladiator_breed(gladiator_t *a, gladiator_t *b)
 	child->brain = brain_crossover(a->brain, b->brain);
 	return child;
 }
+
+cell_t *gladiator_serialize(gladiator_t *g)
+{
+	assert(g && g->brain);
+
+	cell_t *b = brain_serialize(g->brain);
+	assert(b);
+	cell_t *c = printer(
+			"gladiator "
+			"(x %f) (y %f) (orientation %f) "
+			"(field-of-view %f) "
+			"(health %f) "
+			"(team %d) (hits %d) (foods %d) "
+			"(energy %f) "
+			"(mutations %d) (total-mutations %d) "
+			" %x ",
+			g->x, g->y, g->orientation,
+			g->field_of_view,
+			g->health,
+			(intptr_t)(g->team), (intptr_t)(g->hits), (intptr_t)(g->foods),
+			g->energy,
+			(intptr_t)g->mutations, (intptr_t)g->total_mutations,
+			b);
+	assert(c);
+	return c;
+}
+
+gladiator_t *gladiator_deserialize(cell_t *c)
+{
+	assert(c);
+	gladiator_t *g = gladiator_new(0, 0, 0, 0);	
+	brain_delete(g->brain);
+	g->brain = NULL;
+	intptr_t team = 0, hits = 0, foods = 0, mutations = 0, total_mutations = 0;
+	cell_t *cb = NULL;
+
+	int r = scanner(c, 			
+			"gladiator "
+			"(x %f) (y %f) (orientation %f) "
+			"(field-of-view %f) "
+			"(health %f) "
+			"(team %d) (hits %d) (foods %d) "
+			"(energy %f) "
+			"(mutations %d) (total-mutations %d) "
+			" %x ",
+			&g->x, &g->y, &g->orientation,
+			&g->field_of_view,
+			&g->health,
+			&team, &hits, &foods,
+			&g->energy,
+			&mutations, &total_mutations,
+			&cb);
+	if(r < 0) {
+		warning("gladiator deserialization failed");
+		return NULL;
+	}
+	brain_t *b = brain_deserialize(cb);
+	if(!b) {
+		gladiator_delete(g);
+		return NULL;
+	}
+	g->brain = b;
+	return g;
+}
+
 

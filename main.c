@@ -689,6 +689,8 @@ int main(int argc, char **argv)
 	int log_level = program_log_level;
 	bool run_headless = false;
 	int i;
+
+	return 0;
 	for(i = 1; i < argc && argv[i][0] == '-'; i++)
 		switch(argv[i][1]) {
 		case '\0': /* stop argument processing */

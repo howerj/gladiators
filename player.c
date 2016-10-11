@@ -65,4 +65,44 @@ bool player_is_dead(player_t *p)
 	return p->health < 0;
 }
 
+cell_t *player_serialize(player_t *p)
+{
+	assert(p);
+	cell_t *c = printer(
+			"player "
+			"(x %f) (y %f) (orientation %f) (health %f)"
+			"(team %d) (hits %d) (foods %d)"
+			"(energy %f) (score %f)", 
+			p->x, p->y, p->orientation, p->health,
+			(intptr_t)(p->team), (intptr_t)(p->hits), (intptr_t)(p->foods),
+			p->energy, p->score
+			);
+	assert(c);
+	return c;
+}
+
+player_t *player_deserialize(cell_t *c)
+{
+	assert(c);
+	intptr_t team = 0, hits = 0, foods = 0;
+	player_t *p = player_new(0);
+	int r = scanner(c, 
+			"player "
+			"(x %f) (y %f) (orientation %f) (health %f)"
+			"(team %d) (hits %d) (foods %d)"
+			"(energy %f) (score %f)",
+			&p->x, &p->y, &p->orientation, &p->health,
+			&team, &hits, &foods,
+			&p->energy, &p->score);
+	if(r < 0) {
+		warning("deserialization into player object failed from cell <%p>", c);
+		player_delete(p);
+		return NULL;
+	}
+	p->team = team;
+	p->hits = hits;
+	p->foods = foods;
+
+	return p;
+}
 

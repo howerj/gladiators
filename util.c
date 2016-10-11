@@ -132,7 +132,6 @@ bool timer_result(timer_tick_t *t)
 	return t->i > t->max;
 }
 
-
 polar_t cartesian_to_polar(const cartesian_t c)
 {
 	polar_t p;

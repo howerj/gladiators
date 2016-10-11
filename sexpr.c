@@ -517,12 +517,13 @@ static int _expect(cell_t *c, cell_type_e t, const char *file, const char *func,
 }
 
 /** @brief Scan and validate S-Expression input
- *  @todo make a printer like version
  *
  * Example usage:
  * 	int alpha = 0;
  * 	char *bravo = NULL;
- * 	scanner(cell, "(%x (alpha %d) (bravo %s) ("charlie" %*f))", &alpha, &bravo);
+ * 	scanner(cell, "%x (alpha %d) (bravo %s) ("charlie" %*f)", &alpha, &bravo);
+ *
+ * "*" specifier means the argument is ignored.
  *
  *  n = nil
  *  c = cons 
@@ -687,7 +688,8 @@ cell_t *printer(const char *fmt, ...)
 	return c;
 }
 
-/**@todo needs a lot more testing*/
+/**@todo needs a lot more testing, and a method of serializing arrays needs
+ * devising*/
 static cell_t *_vprinter(int *i, const char *fmt, va_list ap) 
 {
 	char f;

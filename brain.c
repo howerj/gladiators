@@ -274,13 +274,14 @@ neuron_t *neuron_deserialize(cell_t *c, size_t length)
 	cell_t *weights;
 	int r = scanner(c, "neuron (bias %f) (alpha %f) (weights %l)", &bias, &alpha, &weights);
 	if(r < 0 || !weights) {
-		fprintf(stderr, "neuron deserialization failed: %d\n", r);
+		warning("neuron deserialization failed: %d", r);
 		return NULL;
 	}
 	neuron_t *n = neuron_new(false, length);
-	for(size_t i =0 ; type(weights) != NIL && i < length; i++, weights = cdr(weights)) {
-		if(type(car(weights)) != FLOAT) {
-			fprintf(stderr, "incorrect weight type");
+	for(size_t i = 0 ; type(weights) != NIL && i < length; i++, weights = cdr(weights)) {
+		cell_type_e wt = type(car(weights));
+		if(wt != FLOAT) {
+			warning("incorrect weight type %u", wt);
 			goto fail;
 		}
 		n->weights[i] = FLT(car(weights));
@@ -298,7 +299,7 @@ layer_t *layer_deserialize(cell_t *c, size_t length)
 	for(size_t i = 0; type(c) != NIL && i < length; i++, c = cdr(c)) {
 		l->neurons[i] = neuron_deserialize(car(c), length);
 		if(!(l->neurons[i])) {
-			fprintf(stderr, "layer deserialization failed\n");
+			warning("layer deserialization failed");
 			goto fail;
 		}
 	}
@@ -319,12 +320,12 @@ brain_t *brain_deserialize(cell_t *c)
 	unsigned i;
 	for(i = 0; type(layers) != NIL; i++, layers = cdr(layers)) {
 		if(type(car(layers)) != CONS) {
-			fprintf(stderr, "invalid configuration: layer is not list\n");
+			warning("invalid configuration: layer is not list");
 			return NULL;
 		}
 		b->layers[i] = layer_deserialize(car(layers), length);
 		if(!b->layers[i]) {
-			fprintf(stderr, "layers deserialization failed\n");
+			warning("layers deserialization failed");
 			goto fail;
 		}
 	}

@@ -10,6 +10,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <math.h>
+#include <stdint.h>
 
 food_t *food_new(double x, double y, double orientation)
 {
@@ -79,4 +80,28 @@ void food_deactive(food_t *f)
 	f->eaten = true;
 }
 
+cell_t *food_serialize(food_t *f)
+{
+	assert(f);
+	cell_t *n = printer("food (x %f) (y %f) (orientation %f) (eaten %d)",
+			f->x, f->y, f->orientation, (intptr_t)(f->eaten));
+	assert(n);
+	return n;
+}
+
+food_t *food_deserialize(cell_t *c)
+{
+	assert(c);
+	food_t *f = food_new(0, 0, 0);
+	intptr_t eaten = false;
+	int r = scanner(c, "food (x %f) (y %f) (orientation %f) (eaten %d)",
+			&f->x, &f->y, &f->orientation, &f->eaten);
+	f->eaten = eaten;
+	if(r < 0) {
+		warning("could not deserialize food object <%p>", c);
+		food_delete(f);
+		return NULL;
+	}
+	return f;
+}
 

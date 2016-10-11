@@ -10,6 +10,7 @@
 #include "gui.h"
 #include <assert.h>
 #include <math.h>
+#include <stdlib.h>
 
 projectile_t *projectile_new(unsigned team, double x, double y, double orientation)
 {
@@ -24,6 +25,11 @@ projectile_t *projectile_new(unsigned team, double x, double y, double orientati
 	p->travelled = projectile_range;
 	p->radius = projectile_size;
 	return p;
+}
+
+void projectile_delete(projectile_t *p)
+{
+	free(p);
 }
 
 bool projectile_is_active(projectile_t *p)
@@ -51,9 +57,6 @@ void projectile_update(projectile_t *p)
 	assert(p);
 	if(!projectile_is_active(p))
 		return;
-	p->x_previous = p->x;
-	p->y_previous = p->y;
-	p->orientation_previous = p->orientation;
 
 	const double distance = projectile_distance_per_tick;
 	p->x += distance * cos(p->orientation);
@@ -76,4 +79,31 @@ bool projectile_fire(projectile_t *p, double x, double y, double orientation)
 	p->orientation = orientation;
 	return true;
 }
+
+cell_t *projectile_serialize(projectile_t *p)
+{
+	assert(p);
+	cell_t *c = printer("projectile (team %d) (x %f) (y %f) (orientation %f) (travelled %f)",
+			p->team,
+			p->x,
+			p->y,
+			p->orientation);
+	assert(c);
+	return c;
+}
+
+projectile_t *projectile_deserialize(cell_t *c)
+{
+	assert(c);
+	projectile_t *p = projectile_new(0, 0, 0, 0);
+	int r = scanner(c, "projectile (team %d) (x %f) (y %f) (orientation %f) (travelled %f)", 
+			&p->team, &p->x, &p->y, &p->orientation, &p->travelled);
+
+	if(r < 0) {
+		projectile_delete(p);
+		return NULL;
+	}
+	return p;
+}
+
 

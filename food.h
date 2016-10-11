@@ -8,8 +8,7 @@
 #define FOOD_H
 
 #include <stdbool.h>
-
-/**@note food might become an entity that tries to evade the gladiators */
+#include "sexpr.h"
 
 typedef enum {
 	FOOD_RANDOM_WALK_E,
@@ -30,5 +29,7 @@ void food_update(food_t *f);
 bool food_is_active(food_t *f);
 void food_reactivate(food_t *f, double x, double y, double orientation);
 void food_deactive(food_t *f);
+cell_t *food_serialize(food_t *f);
+food_t *food_deserialize(cell_t *c);
 
 #endif

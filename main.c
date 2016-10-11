@@ -829,15 +829,6 @@ done:
 
 	world = initialize_arena(arena_gladiator_count, arena_food_count);
 
-	cell_t *c = world_serialize(world);
-	write_s_expression_to_file(c, stdout);
-
-	world_t *w2 = world_deserialize(c);
-	c = world_serialize(w2);
-	write_s_expression_to_file(c, stdout);
-
-	return 0;
-
 	if(program_run_headless) {
 		headless_loop(world, stdout, program_headless_loops, program_headless_loops == 0);
 		if(program_run_window_after_headless) {

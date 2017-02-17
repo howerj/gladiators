@@ -16,7 +16,7 @@ typedef struct {
 	double orientation;
 	double radius;
 	double travelled;
-	intptr_t team;
+	unsigned team;
 } projectile_t;
 
 projectile_t *projectile_new(unsigned team, double x, double y, double orientation);

@@ -582,6 +582,17 @@ Another possible avenue for development would be to make this more into a game
 where a player could compete against the results of the contest to see which
 one can last the longest.
 
+### To Do
+
+* Work on S-Expression library so state can be saved and loaded in again, this
+should be turned into a standalone library.
+* Work on adding a player: They should only be able to see what a gladiator
+can.
+* The selection mechanism needs to be improved, each generation should have a
+much higher population count, and the selection mechanisms needs to be
+changed. A population of about 50 gladiators would fight in a tournament, with
+greater probability of reproduction going to the winners.
+
 [A video]: https://www.youtube.com/watch?v=u2t77mQmJiY
 [doublezoom.free.fr]: http://doublezoom.free.fr/programmation/AG_Exemple_Fighting.php
 [Glut]: https://www.opengl.org/resources/libraries/glut/

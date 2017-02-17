@@ -535,7 +535,7 @@ static int _expect(cell_t *c, cell_type_e t, const char *file, const char *func,
 int _vscanner(cell_t *c, int i, const char *fmt, va_list ap)
 {
 	char f;
-	assert(c && fmt && ap && type(c) == CONS);
+	assert(c && fmt && type(c) == CONS);
 	while((f = fmt[i])) {
 		if(isspace(f)) {
 			i++;
@@ -689,7 +689,7 @@ cell_t *printer(const char *fmt, ...)
 static cell_t *_vprinter(int *i, const char *fmt, va_list ap) 
 {
 	char f;
-	assert(fmt && ap);
+	assert(fmt);
 	cell_t *head = cell_new(CONS);
 	cell_t *c = head, *prev = NULL;
 	while((f = fmt[*i])) {

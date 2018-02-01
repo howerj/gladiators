@@ -193,7 +193,7 @@ gladiator_t *gladiator_breed(gladiator_t *a, gladiator_t *b)
 	child->mutations = MAX(a->mutations, b->mutations);
 	child->rank      = MAX(a->rank,      b->rank);
 	child->fitness   = MAX(a->fitness,   b->fitness);
-	child->brain = brain_crossover(a->brain, b->brain);
+	child->brain     = brain_crossover(a->brain, b->brain);
 	return child;
 }
 

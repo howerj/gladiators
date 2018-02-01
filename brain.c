@@ -235,6 +235,12 @@ void brain_update(brain_t *b, const double inputs[], size_t in_length, double ou
 	for(size_t i = 0; i < in_length; i++)
 		b->inputs[i] = inputs[i];
 	update_layer(b->layers[0], b->inputs, in_length);
+	/** @note This is an experiment to see if adding state helps, the
+	 * outputs of the previous run are fed into the current one with
+	 * addition */
+	if(brain_mix_in_feedback)
+		for(size_t i = 0; i < b->length; i++)
+			b->layers[0]->outputs[i] += b->layers[b->depth - 1]->outputs[i];
 	for(size_t i = 1; i < b->depth; i++)
 		update_layer(b->layers[i], b->layers[i-1]->outputs, b->layers[i-1]->length);
 	for(size_t i = 0; i < out_length; i++)

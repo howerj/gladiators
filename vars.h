@@ -31,6 +31,7 @@ typedef enum {
 	X(unsigned,  brain_activation_function,          2,       true)\
 	X(unsigned,  brain_input_normalization_method,   1,       true)\
 	X(double,    brain_max_weight_increment,         2.0,     false)\
+	X(bool,      brain_mix_in_feedback,              true,    true)\
 	X(bool,      draw_gladiator_collision,           true,    true)\
 	X(bool,      draw_gladiator_target_lines,        true,    true)\
 	X(bool,      draw_gladiator_wall_collision,      true,    true)\

@@ -39,13 +39,13 @@ typedef enum {
 	X(bool,      draw_gladiator_wall_collision,      true,    true)\
 	X(bool,      draw_circle_arc_debug_line,         false,   true)\
 	X(double,    fitness_weight_energy,              0.0,     true)\
-	X(double,    fitness_weight_food,                1.0,     true)\
+	X(double,    fitness_weight_food,                0.2,     true)\
 	X(double,    fitness_weight_health,              1.5,     true)\
 	X(double,    fitness_weight_hits,                1.0,     true)\
 	X(double,    fitness_weight_round,               5.000,   true)\
-	X(double,    fitness_weight_wall_time,          -0.1,     true)\
-	X(double,    fitness_weight_time_alive,          0.001,   true)\
-	X(bool,      food_active,                        true,    true)\
+	X(double,    fitness_weight_wall_time,          -0.3,     true)\
+	X(double,    fitness_weight_time_alive,          0.000,   true)\
+	X(bool,      food_active,                        false,   true)\
 	X(unsigned,  food_control_method,                1,       true)\
 	X(double,    food_distance_per_tick,             0.01,    true)\
 	X(double,    food_health,                        0.25,    true)\
@@ -53,23 +53,23 @@ typedef enum {
 	X(bool,      food_respawns,                      true,    true)\
 	X(double,    food_size,                          1.0,     false)\
 	X(unsigned,  gladiator_bounce_off_walls,         false,   true)\
-	X(unsigned,  gladiator_brain_depth,              6,       false)\
-	X(unsigned,  gladiator_brain_length,             30,      false)\
-	X(double,    gladiator_distance_per_tick,        1.5,     true)\
-	X(double,    gladiator_energy_increment,         10.0,    true)\
+	X(unsigned,  gladiator_brain_depth,              4,       false)\
+	X(unsigned,  gladiator_brain_length,             15,      false)\
+	X(double,    gladiator_distance_per_tick,        1.0,     true)\
+	X(double,    gladiator_energy_increment,         1.0,     true)\
 	X(double,    gladiator_field_of_view_divisor,    10.00,   false)\
 	X(double,    gladiator_fire_threshold,           0.90,    true)\
 	X(double,    gladiator_fire_timeout,             0.0,     true)\
-	X(double,    gladiator_health,                   10.0,    true)\
+	X(double,    gladiator_health,                   2.0,     true)\
 	X(double,    gladiator_max_energy,               8000.0,  false)\
 	X(double,    gladiator_max_field_of_view,        1.0,     true)\
 	X(double,    gladiator_min_field_of_view,        0.15,    true)\
 	X(double,    gladiator_size,                     3.0,     false)\
 	X(double,    gladiator_starting_energy,          0.0,     true)\
-	X(double,    gladiator_turn_rate_divisor,        40.0,    false)\
+	X(double,    gladiator_turn_rate_divisor,        7.30,    false)\
 	X(double,    gladiator_vision,                   400.0,   true)\
-	X(double,    gladiator_wall_time,                10.0,    true)\
-	X(double,    max_ticks_per_generation,           4000.0,  false)\
+	X(double,    gladiator_wall_time,                5.0,     true)\
+	X(double,    max_ticks_per_generation,           10000.0, false)\
 	X(double,    mutation_rate,                      0.075,   true)\
 	X(bool,      print_arena_tick,                   true,    true)\
 	X(bool,      print_fps,                          true,    true)\
@@ -90,14 +90,14 @@ typedef enum {
 	X(bool,      print_gladiator_total_mutations,    true,    true)\
 	X(bool,      print_gladiator_x,                  false,   true)\
 	X(bool,      print_gladiator_y,                  false,   true)\
-	X(unsigned,  program_headless_loops,             1000,    true)\
+	X(unsigned,  program_headless_loops,             200,     true)\
 	X(unsigned,  program_log_level,                  NOTE,    true)\
 	X(bool,      program_pause_after_new_generation, false,   true)\
 	X(double,    program_random_seed,                7.0,     true)\
 	X(bool,      program_run_headless,               true,    true)\
 	X(bool,      program_run_window_after_headless,  true,    true)\
 	X(double,    projectile_damage,                  1.0,     true)\
-	X(double,    projectile_distance_per_tick,       2.5,     true)\
+	X(double,    projectile_distance_per_tick,       1.5,     true)\
 	X(double,    projectile_energy_cost,             50.0,    true)\
 	X(double,    projectile_range,                   400.0,   true)\
 	X(double,    projectile_size,                    2.0,     true)\

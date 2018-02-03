@@ -34,19 +34,19 @@ typedef struct { /**@note it might be worth translating some functions to use po
 	double x, y;
 } point_t;
 
-void set_color(color_t color);
-void draw_regular_polygon_filled(double x, double y, double orientation, double radius, shape_t shape, color_t color);
-void draw_regular_polygon_line(double x, double y, double orientation, double radius, shape_t shape, double thickness, color_t color);
-void draw_line(double x, double y, double angle, double magnitude, double thickness, color_t color);
-void draw_cross(double x, double y, double angle, double magnitude, double thickness, color_t color);
-void draw_arc_filled(double x, double y, double angle, double magnitude, double arc, color_t color);
-void draw_arc_line(double x, double y, double angle, double magnitude, double arc, double thickness, color_t color);
-void draw_rectangle_filled(double x, double y, double width, double height, color_t color);
-void draw_rectangle_line(double x, double y, double width, double height, double thickness, color_t color);
-int draw_text(color_t color, double x, double y, const char *fmt, ...);
-int vdraw_text(color_t color, double x, double y, const char *fmt, va_list ap);
+void set_color(const color_t *color);
+void draw_regular_polygon_filled(double x, double y, double orientation, double radius, shape_t shape, const color_t *color);
+void draw_regular_polygon_line(double x, double y, double orientation, double radius, shape_t shape, double thickness, const color_t *color);
+void draw_line(double x, double y, double angle, double magnitude, double thickness, const color_t *color);
+void draw_cross(double x, double y, double angle, double magnitude, double thickness, const color_t *color);
+void draw_arc_filled(double x, double y, double angle, double magnitude, double arc, const color_t *color);
+void draw_arc_line(double x, double y, double angle, double magnitude, double arc, double thickness, const color_t *color);
+void draw_rectangle_filled(double x, double y, double width, double height, const color_t *color);
+void draw_rectangle_line(double x, double y, double width, double height, double thickness, const color_t *color);
+int draw_text(const color_t *color, double x, double y, const char *fmt, ...);
+int vdraw_text(const color_t *color, double x, double y, const char *fmt, va_list ap);
 
-color_t team_to_color(unsigned team);
+const color_t *team_to_color(unsigned team);
 
 void fill_textbox(textbox_t *t, bool on, const char *fmt, ...);
 void draw_textbox(textbox_t *t);

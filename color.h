@@ -7,19 +7,29 @@
 #ifndef COLOR_H
 #define COLOR_H
 
-typedef enum {
-	WHITE,
-	RED,
-	YELLOW,
-	GREEN,
-	CYAN,
-	BLUE,
-	MAGENTA,
-	BROWN,
-	BLACK,
-	INVALID_COLOR
-} colors_e;
+typedef struct {
+	double r, g, b, a;
+} color_t;
 
-typedef colors_e color_t;
+extern const color_t color_white;
+extern const color_t color_red;
+extern const color_t color_yellow;
+extern const color_t color_green;
+extern const color_t color_cyan;
+extern const color_t color_blue;
+extern const color_t color_magenta;
+extern const color_t color_brown;
+extern const color_t color_black;
+
+extern const color_t *WHITE;
+extern const color_t *RED;
+extern const color_t *YELLOW;
+extern const color_t *GREEN;
+extern const color_t *CYAN;
+extern const color_t *BLUE;
+extern const color_t *MAGENTA;
+extern const color_t *BROWN;
+extern const color_t *BLACK;
+
 
 #endif

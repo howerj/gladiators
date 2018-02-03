@@ -112,15 +112,16 @@ void gladiator_update(gladiator_t *g, const double inputs[], double outputs[])
 void gladiator_draw(gladiator_t *g)
 {
 	assert(g);
-	color_t food = g->food_detected ? BLUE : GREEN;
+	const color_t *food = g->food_detected ? BLUE : GREEN;
 	draw_regular_polygon_filled(g->x, g->y, g->orientation, g->radius/4, CIRCLE, food);
 	draw_regular_polygon_filled(g->x, g->y, g->orientation, g->radius/2, CIRCLE, g->health > 0 ? WHITE : BLACK);
-	draw_regular_polygon_filled(g->x, g->y, g->orientation, g->radius, PENTAGON, team_to_color(g->team));
+	/*draw_regular_polygon_filled(g->x, g->y, g->orientation, g->radius, PENTAGON, team_to_color(g->team));*/
+	draw_regular_polygon_filled(g->x, g->y, g->orientation, g->radius, PENTAGON, &g->color);
 
-	color_t projectile = g->enemy_projectile_detected ? RED : GREEN;
+	const color_t *projectile = g->enemy_projectile_detected ? RED : GREEN;
 	draw_line(g->x, g->y, g->orientation, g->radius*2, g->radius/2, projectile);
 	if(!gladiator_is_dead(g) && draw_gladiator_target_lines) {
-		color_t target = g->enemy_gladiator_detected ? RED : GREEN;
+		const color_t *target = g->enemy_gladiator_detected ? RED : GREEN;
 		draw_line(g->x, g->y, g->orientation - g->field_of_view/2, Ymax/5, g->radius/2, target);
 		draw_line(g->x, g->y, g->orientation + g->field_of_view/2, Ymax/5, g->radius/2, target);
 	}
@@ -139,6 +140,10 @@ gladiator_t *gladiator_new(unsigned team, double x, double y, double orientation
 	g->field_of_view = PI / 3.0;
 	g->health = gladiator_health;
 	g->radius = gladiator_size;
+	g->color.a = 1.0;
+	g->color.r = random_float()*0.8; 
+	g->color.g = random_float()*0.8;
+	g->color.b = random_float()*0.8;
 	size_t length = MAX(gladiator_brain_length, GLADIATOR_IN_LAST_INPUT);
 	length = MAX(length, GLADIATOR_OUT_LAST_OUTPUT);
 	g->brain = brain_new(true, true, length, gladiator_brain_depth);

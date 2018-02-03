@@ -19,38 +19,46 @@
 #define FONT_HEIGHT (15)
 #define FONT_WIDTH  (9)
 
-void set_color(color_t color)
+const color_t color_white   = { .r = 1.0,  .g = 1.0,  .b = 1.0, .a = 1.0 };
+const color_t color_red     = { .r = 0.8,  .g = 0.0,  .b = 0.0, .a = 1.0 };
+const color_t color_yellow  = { .r = 0.8,  .g = 0.8,  .b = 0.0, .a = 1.0 };
+const color_t color_green   = { .r = 0.0,  .g = 0.8,  .b = 0.0, .a = 1.0 };
+const color_t color_cyan    = { .r = 0.0,  .g = 0.8,  .b = 0.8, .a = 1.0 };
+const color_t color_blue    = { .r = 0.0,  .g = 0.0,  .b = 0.8, .a = 1.0 };
+const color_t color_magenta = { .r = 0.8,  .g = 0.0,  .b = 0.8, .a = 1.0 };
+const color_t color_brown   = { .r = 0.35, .g = 0.35, .b = 0.0, .a = 1.0 };
+const color_t color_black   = { .r = 0.0,  .g = 0.0,  .b = 0.0, .a = 1.0 };
+
+const color_t *WHITE   = &color_white;
+const color_t *RED     = &color_red;
+const color_t *YELLOW  = &color_yellow;
+const color_t *GREEN   = &color_green;
+const color_t *CYAN    = &color_cyan;
+const color_t *BLUE    = &color_blue;
+const color_t *MAGENTA = &color_magenta;
+const color_t *BROWN   = &color_brown;
+const color_t *BLACK   = &color_black;
+
+void set_color(const color_t *color)
 {
-	switch(color) {
-	case WHITE:   glColor3f(1.0, 1.0, 1.0);   break;
-	case RED:     glColor3f(0.8, 0.0, 0.0);   break;
-	case YELLOW:  glColor3f(0.8, 0.8, 0.0);   break;
-	case GREEN:   glColor3f(0.0, 0.8, 0.0);   break;
-	case CYAN:    glColor3f(0.0, 0.8, 0.8);   break;
-	case BLUE:    glColor3f(0.0, 0.0, 0.8);   break;
-	case MAGENTA: glColor3f(0.8, 0.0, 0.8);   break;
-	case BROWN:   glColor3f(0.35, 0.35, 0.0); break;
-	case BLACK:   glColor3f(0.0, 0.0, 0.0);   break;
-	default:
-		error("invalid color '%d'", color);
-	}
+	glColor3f(color->r, color->g, color->b);
 }
 
-color_t team_to_color(unsigned team)
+const color_t *team_to_color(unsigned team)
 {
-	static const color_t colors[] = { RED, GREEN, YELLOW, CYAN, BLUE, MAGENTA };
+	static const color_t *colors[] = { &color_red, &color_green, &color_yellow, &color_cyan, &color_blue, &color_magenta};
 	static bool warned = false; /**@warning not threadsafe, although of no real consequence*/
 	if(team >= sizeof(colors)/sizeof(colors[0])) {
 		if(!warned) {
 			warning("gladiator: ran out of team colors %u", team);
 			warned = true;
 		}
-		return MAGENTA;
+		return &color_magenta;
 	}
 	return colors[team];
 }
 
-void draw_line(double x, double y, double angle, double magnitude, double thickness, color_t color)
+void draw_line(double x, double y, double angle, double magnitude, double thickness, const color_t *color)
 {
 	if(program_run_headless)
 		return;
@@ -68,7 +76,7 @@ void draw_line(double x, double y, double angle, double magnitude, double thickn
 	glPopMatrix();
 }
 
-void draw_cross(double x, double y, double angle, double magnitude, double thickness, color_t color)
+void draw_cross(double x, double y, double angle, double magnitude, double thickness, const color_t *color)
 {
 	double xn, yn;
 	if(program_run_headless)
@@ -81,7 +89,7 @@ void draw_cross(double x, double y, double angle, double magnitude, double thick
 	draw_line(xn, yn, angle+PI/2, magnitude, thickness, color);
 }
 
-static void _draw_arc(double x, double y, double angle, double magnitude, double arc, bool lines, double thickness, color_t color)
+static void _draw_arc(double x, double y, double angle, double magnitude, double arc, bool lines, double thickness, const color_t *color)
 {
 	if(program_run_headless)
 		return;
@@ -105,12 +113,12 @@ static void _draw_arc(double x, double y, double angle, double magnitude, double
 
 }
 
-void draw_arc_filled(double x, double y, double angle, double magnitude, double arc, color_t color)
+void draw_arc_filled(double x, double y, double angle, double magnitude, double arc, const color_t *color)
 {
 	return _draw_arc(x, y, angle, magnitude, arc, false, 0, color);
 }
 
-void draw_arc_line(double x, double y, double angle, double magnitude, double arc, double thickness, color_t color)
+void draw_arc_line(double x, double y, double angle, double magnitude, double arc, double thickness, const color_t *color)
 {
 	return _draw_arc(x, y, angle, magnitude, arc, true, thickness, color);
 }
@@ -121,7 +129,7 @@ static void _draw_regular_polygon(
 		double orientation, 
 		double radius, double sides, 
 		bool lines, double thickness, 
-		color_t color)
+		const color_t *color)
 {
 	if(program_run_headless)
 		return;
@@ -143,7 +151,7 @@ static void _draw_regular_polygon(
 	glPopMatrix();
 }
 
-static void _draw_rectangle(double x, double y, double width, double height, bool lines, double thickness, color_t color)
+static void _draw_rectangle(double x, double y, double width, double height, bool lines, double thickness, const color_t *color)
 {
 	if(program_run_headless)
 		return;
@@ -166,12 +174,12 @@ static void _draw_rectangle(double x, double y, double width, double height, boo
 	glPopMatrix();
 }
 
-void draw_rectangle_filled(double x, double y, double width, double height, color_t color)
+void draw_rectangle_filled(double x, double y, double width, double height, const color_t *color)
 {
 	return _draw_rectangle(x, y, width, height, false, 0, color); 
 }
 
-void draw_rectangle_line(double x, double y, double width, double height, double thickness, color_t color)
+void draw_rectangle_line(double x, double y, double width, double height, double thickness, const color_t *color)
 {
 	return _draw_rectangle(x, y, width, height, true, thickness, color); 
 }
@@ -194,7 +202,7 @@ double shape_to_sides(shape_t shape)
 	return sides[shape % INVALID_SHAPE];
 }
 
-void draw_regular_polygon_filled(double x, double y, double orientation, double radius, shape_t shape, color_t color)
+void draw_regular_polygon_filled(double x, double y, double orientation, double radius, shape_t shape, const color_t *color)
 {
 	if(program_run_headless)
 		return;
@@ -202,7 +210,7 @@ void draw_regular_polygon_filled(double x, double y, double orientation, double 
 	_draw_regular_polygon(x, y, orientation, radius, sides, false, 0, color);
 }
 
-void draw_regular_polygon_line(double x, double y, double orientation, double radius, shape_t shape, double thickness, color_t color)
+void draw_regular_polygon_line(double x, double y, double orientation, double radius, shape_t shape, double thickness, const color_t *color)
 {
 	if(program_run_headless)
 		return;
@@ -224,7 +232,7 @@ static int draw_string(const char *msg)
 	return len;
 }
 
-int vdraw_text(color_t color, double x, double y, const char *fmt, va_list ap)
+int vdraw_text(const color_t *color, double x, double y, const char *fmt, va_list ap)
 {
 	char f;
 	int r = 0;
@@ -284,7 +292,7 @@ int vdraw_text(color_t color, double x, double y, const char *fmt, va_list ap)
 	return r;
 }
 
-int draw_text(color_t color, double x, double y, const char *fmt, ...)
+int draw_text(const color_t *color, double x, double y, const char *fmt, ...)
 {
 	assert(fmt);
 	if(program_run_headless)
@@ -305,7 +313,7 @@ void fill_textbox(textbox_t *t, bool on, const char *fmt, ...)
 	if(!on || program_run_headless)
 		return;
 	va_start(ap, fmt);
-	r = vdraw_text(t->color_text, t->x, t->y - t->height, fmt, ap);
+	r = vdraw_text(&t->color_text, t->x, t->y - t->height, fmt, ap);
 	va_end(ap);
 	t->width = MAX(t->width, r); 
 	t->height += ((Ymax / window_height) * FONT_HEIGHT); /*correct?*/
@@ -317,7 +325,7 @@ void draw_textbox(textbox_t *t)
 	if(!(t->draw_box) || program_run_headless)
 		return;
 	/**@todo fix this */
-	draw_rectangle_line(t->x, t->y-t->height, t->width, t->height, 0.5, t->color_box);
+	draw_rectangle_line(t->x, t->y-t->height, t->width, t->height, 0.5, &t->color_box);
 }
 
 double wrap_or_limit_x(double x)

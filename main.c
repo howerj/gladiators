@@ -480,7 +480,7 @@ static void update_gladiator_outputs(gladiator_t *g, projectile_t *p, double out
 	if(fire && g->energy >= projectile_energy_cost && p) {
 		g->energy -= projectile_energy_cost;
 		if(!(g->refire_timeout)) {
-			projectile_fire(p, g->team, g->x, g->y, g->orientation);
+			projectile_fire(p, g->team, g->x, g->y, g->orientation, &g->color);
 			g->refire_timeout = gladiator_fire_timeout;
 		}
 	}
@@ -537,7 +537,7 @@ static void draw_debug_info(world_t *w)
 {
 	if(!verbose(NOTE))
 		return;
-	textbox_t t = { .x = Xmin + Xmax/40, .y = Ymax - Ymax/40, .draw_box = false, .color_text = WHITE };
+	textbox_t t = { .x = Xmin + Xmax/40, .y = Ymax - Ymax/40, .draw_box = false, .color_text = *WHITE };
 
 	fill_textbox(&t, print_generation,        "generation: %u", w->generation);
 	fill_textbox(&t, print_arena_tick,        "tick:       %u", tick);
@@ -548,7 +548,7 @@ static void draw_debug_info(world_t *w)
 
 	for(size_t i = 0; i < w->gladiator_count; i++) {
 		gladiator_t *g = w->gs[i];
-		t.color_text = team_to_color(g->team);
+		t.color_text = g->color;
 		fill_textbox(&t, print_gladiator_team_number,     "gladiator:  %u", g->team); 
 		fill_textbox(&t, print_gladiator_health,          "health      %f", g->health);
 		fill_textbox(&t, print_gladiator_hits,            "hit         %u", g->hits);
@@ -638,35 +638,6 @@ static void print_fitness(FILE *out, gladiator_t **gs, size_t count)
 	fputc('\n', out);
 }
 
-#if 0
-static void select_new_gladiators(gladiator_t **gs, size_t count)
-{
-	assert(gs);
-	update_fitness(gs, count);
-
-	qsort(gs, count, sizeof(gs[0]), fitness_compare_function);
-
-	gladiator_t *strongest = gs[0];
-	gladiator_t *weakest   = gs[count - 1];
-	if(strongest->fitness != weakest->fitness) {
-		gladiator_delete(weakest);
-		gs[count - 1] = gladiator_copy(strongest);
-
-		if(count > 2 && use_crossover) {
-			gladiator_t *beta = gs[1];
-			weakest = gs[count - 2];
-			gs[count - 2] = gladiator_breed(beta, strongest);
-			gladiator_delete(weakest);
-		}
-	}
-	if(verbose(DEBUG)) {
-		cell_t *c = brain_serialize(strongest->brain);
-		write_s_expression_to_file(c, stdout);
-		cell_delete(c);
-	}
-
-}
-#endif
 static void normalize_fitness(gladiator_t **gs, size_t count)
 {
 	double min = 1e38;
@@ -705,7 +676,6 @@ static size_t spin_wheel(double wheel[], size_t count)
 		if(wheel[i] >= r)
 			break;
 	assert(i < count);
-	printf("%zu ", i);
 	return i;
 }
 
@@ -722,8 +692,6 @@ static gladiator_t **roulette_wheel_selection(gladiator_t **gs, size_t count)
 		selection[i] = gs[i]->fitness / total;
 	for(size_t i = 1; i < count; i++)
 		selection[i] += selection[i-1];
-	/*for(size_t i = 0; i < count; i++)
-		fprintf(stderr, "%.4f ", selection[i]);*/
 	for(size_t i = 0; i < count; i++) {
 		double breed = random_float();
 		if(breed > breeding_rate && breeding_on)
@@ -761,7 +729,7 @@ static void gladiators_delete(gladiator_t **gs, size_t count)
 	free(gs);
 }
 
-static void new_generation(world_t *w)
+static void new_generation(FILE *out, world_t *w)
 {
 	assert(w);
 	for(size_t i = 0; i < w->projectile_count; i++) /*disable all projectiles*/
@@ -780,7 +748,8 @@ static void new_generation(world_t *w)
 			w->generation++;
 			w->round = w->gladiator_rounds;
 			sort_gladiators(w->gs, all);
-			print_fitness(stderr, w->population, all);
+			if(verbose(NOTE))
+				print_fitness(out, w->population, all);
 			gladiator_t **new = roulette_wheel_selection(w->population, all);
 			gladiators_delete(w->population, all);
 			w->population = new;
@@ -793,9 +762,6 @@ static void new_generation(world_t *w)
 		w->match++;
 		w->gs += w->gladiator_count;
 	}
-
-	//select_new_gladiators(w->gs, w->gladiator_count); 
-
 	reinitialize_foods(w->fs, w->food_count);
 	reinitialize_player(w->player);
 }
@@ -821,7 +787,7 @@ static void draw_scene(void)
 
 	if(next != tick && (!arena_paused || step)) {
 		if(tick > max_ticks_per_generation || world->alive <= 1 || skip) {
-			new_generation(world);
+			new_generation(stderr, world);
 			tick = 0;
 			arena_paused = program_pause_after_new_generation;
 			skip = false;
@@ -831,7 +797,7 @@ static void draw_scene(void)
 		update_scene(world);
 	}
 
-	textbox_t t = { .x = Xmax/2, .y = Ymax/2, .draw_box = false, .color_text = WHITE };
+	textbox_t t = { .x = Xmax/2, .y = Ymax/2, .draw_box = false, .color_text = *WHITE };
 	fill_textbox(&t, arena_paused, "PAUSED: PRESS 'R' TO CONTINUE");
 	fill_textbox(&t, arena_paused, "        PRESS 'S' TO SINGLE STEP");
 
@@ -929,7 +895,7 @@ static void headless_loop(world_t *w, FILE *out, unsigned count, bool forever)
 				print_fitness(out, w->gs, w->gladiator_count);
 			}
 
-			new_generation(w);
+			new_generation(out, w);
 
 			if(verbose(NOTE)) {
 				fprintf(out, "            ");

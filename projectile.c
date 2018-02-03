@@ -50,7 +50,8 @@ void projectile_draw(projectile_t *p)
 	assert(p);
 	if(!projectile_is_active(p))
 		return;
-	draw_regular_polygon_filled(p->x, p->y, p->orientation, projectile_size, TRIANGLE, team_to_color(p->team));
+	const color_t *color = p->color ? p->color : RED;
+	draw_regular_polygon_filled(p->x, p->y, p->orientation, projectile_size, TRIANGLE, color);
 }
 
 unsigned projectile_team(projectile_t *p)
@@ -75,11 +76,12 @@ void projectile_update(projectile_t *p)
 		projectile_deactivate(p);
 }
 
-bool projectile_fire(projectile_t *p, unsigned team, double x, double y, double orientation)
+bool projectile_fire(projectile_t *p, unsigned team, double x, double y, double orientation, const color_t *color)
 {
 	assert(p);
 	if(projectile_is_active(p))
 		return false;
+	p->color = color;
 	p->travelled = 0;
 	p->x = wrap_or_limit_x(x);
 	p->y = wrap_or_limit_y(y);

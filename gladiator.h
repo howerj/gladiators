@@ -10,6 +10,7 @@
 #include <stdbool.h>
 #include "brain.h"
 #include "util.h"
+#include "color.h"
 
 typedef struct {
 	double x, y; /**< position of gladiator*/
@@ -33,6 +34,7 @@ typedef struct {
 	double fitness; /**< parents fitness level*/
 	brain_t *brain; /**< the gladiators brain*/
 	timer_tick_t wall_contact_timer; /**< timer for the amount of gladiator has been in contact with the wall*/
+	color_t color;
 } gladiator_t;
 
 #define X_MACRO_GLADIATOR_INPUTS\

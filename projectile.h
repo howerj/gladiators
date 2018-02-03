@@ -23,8 +23,9 @@ projectile_t *projectile_new(unsigned team, double x, double y, double orientati
 void projectile_delete(projectile_t *p);
 void projectile_draw(projectile_t *p);
 void projectile_update(projectile_t *p);
+unsigned projectile_team(projectile_t *p);
 bool projectile_is_active(projectile_t *p);
-bool projectile_fire(projectile_t *p, double x, double y, double orientation);
+bool projectile_fire(projectile_t *p, unsigned team, double x, double y, double orientation);
 void projectile_deactivate(projectile_t *p);
 cell_t *projectile_serialize(projectile_t *p);
 projectile_t *projectile_deserialize(cell_t *c);

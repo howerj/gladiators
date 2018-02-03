@@ -63,9 +63,7 @@ static void update_orientation(gladiator_t *g, double outputs[])
 static void update_distance(gladiator_t *g, double outputs[])
 {
 	assert(g && outputs);
-	/**@todo add inertia, drag could also be added, a value that could be
-	 * changed to reflect traveling in water, or air. The physics section
-	 * and function really should be separated into another file. */
+	/**@todo add inertia */
 	double distance = gladiator_distance_per_tick * outputs[GLADIATOR_OUT_MOVE_FORWARD];
 	distance = MAX(0, MIN(gladiator_distance_per_tick, distance));
 	g->x += distance * cos(g->orientation);
@@ -97,6 +95,8 @@ void gladiator_update(gladiator_t *g, const double inputs[], double outputs[])
 	g->enemy_gladiator_detected  = inputs[GLADIATOR_IN_VISION_ENEMY] > 0.0;
 	g->enemy_projectile_detected = inputs[GLADIATOR_IN_VISION_PROJECTILE] > 0.0;
 	g->food_detected = inputs[GLADIATOR_IN_VISION_FOOD] > 0.0;
+	if(g->refire_timeout)
+		g->refire_timeout--;
 
 	brain_update(g->brain, inputs, GLADIATOR_IN_LAST_INPUT, outputs, GLADIATOR_OUT_LAST_OUTPUT);
 

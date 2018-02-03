@@ -28,6 +28,7 @@ typedef struct {
 	unsigned rank; /**< when the gladiator died, if it did*/
 	unsigned mutations; /**< mutations from previous round*/
 	unsigned total_mutations; /**< total mutations*/
+	unsigned refire_timeout; /**< time left until next fire allowed */
 	double fitness; /**< parents fitness level*/
 	brain_t *brain; /**< the gladiators brain*/
 	timer_tick_t wall_contact_timer; /**< timer for the amount of gladiator has been in contact with the wall*/

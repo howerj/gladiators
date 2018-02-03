@@ -107,7 +107,7 @@ cell_t *cell_new(cell_type_e type)
 
 cell_t *mkfloat(double x)
 {
-	cell_t *d = cell_new(FLOAT);
+	cell_t *d = cell_new(FLOATING);
 	d->p.floating = x;
 	return d;
 }
@@ -175,7 +175,7 @@ bool cell_eq(cell_t *a, cell_t *b)
 		return true;
 	case INTEGER:
 		return a->p.integer == b->p.integer;
-	case FLOAT:
+	case FLOATING:
 		return a->p.floating == b->p.floating;
 	case SYMBOL:
 	case STRING:
@@ -214,7 +214,7 @@ void cell_delete(cell_t *cell)
 	case NIL:
 		return;
 	case INTEGER:
-	case FLOAT:   
+	case FLOATING:   
 		if(cell->freeable)
 			free(cell); 
 		return;
@@ -304,7 +304,7 @@ static cell_t *parse_symbol_or_number(lexer_t *l)
 			errno = 0;
 			c->p.floating = strtod(s, &end);
 			if(!*end && !errno) {
-				c->type = FLOAT;
+				c->type = FLOATING;
 				return c;
 			}
 			c->p.string = duplicate(s);
@@ -440,11 +440,11 @@ static int _write_s_expression_to_file(cell_t *cell, FILE *output, unsigned dept
 	if(!cell)
 		fatal("unexpected NULL");
 	switch(cell->type) {
-	case NIL:     return fprintf(output, "() ");
-	case INTEGER: return fprintf(output, "%"PRIdPTR, cell->p.integer);
-	case FLOAT:   return fprintf(output, "%.3lf ", cell->p.floating);
-	case SYMBOL:  return fprintf(output, "%s ", cell->p.string);
-	case STRING:  return print_escaped_string(cell->p.string, output);
+	case NIL:      return fprintf(output, "() ");
+	case INTEGER:  return fprintf(output, "%"PRIdPTR, cell->p.integer);
+	case FLOATING: return fprintf(output, "%.3lf ", cell->p.floating);
+	case SYMBOL:   return fprintf(output, "%s ", cell->p.string);
+	case STRING:   return print_escaped_string(cell->p.string, output);
 	case CONS:
 	{
 		int r = 1, f = 0;
@@ -489,12 +489,12 @@ static const char *type2name(cell_type_e t)
 {
 	assert(t >= 0 && t < INVALID_CELL_TYPE);
 	static const char *name[] = {
-		[NIL]     = "nil",
-		[INTEGER] = "integer",
-		[FLOAT]   = "float",
-		[SYMBOL]  = "symbol",
-		[STRING]  = "string",
-		[CONS]    = "cons",
+		[NIL]      = "nil",
+		[INTEGER]  = "integer",
+		[FLOATING] = "float",
+		[SYMBOL]   = "symbol",
+		[STRING]   = "string",
+		[CONS]     = "cons",
 	};
 	return name[t];
 }
@@ -582,7 +582,7 @@ int _vscanner(cell_t *c, int i, const char *fmt, va_list ap)
 			}
 			case 'f':
 			{
-				if(!expect(ca, FLOAT))
+				if(!expect(ca, FLOATING))
 					return -1;
 				if(ignore)
 					break;

@@ -3,19 +3,19 @@
  *  @author     Richard Howe (2016)
  *  @license    MIT <https://opensource.org/licenses/MIT>
  *  @email      howe.r.j.89@gmail.com
- *  @todo structures for Cartesian and Polar coordinates
  *  @todo split this file up
- *  @todo s-expression based configuration file
+ *  @todo s-expression based configuration file?
+ *  @todo allow gladiators to be saved and reloaded
  *  @todo more debugging information should be acquired (inputs, outputs, brain
  *  simulator - eg. what happens if I set these inputs, etc.)
- *  @todo allow the arena to be larger than the screen, and add a minimap
+ *  @todo allow multiple projectiles to be fired and in play at any one time
+ *  @todo more player colors
  *  @todo add a player object, and player led selection, and a networked
  *  version. It would be interesting to make it so the player has the same kind
  *  of inputs and field of view as the gladiators, so they do not have the
  *  advantage of being able to see the full screen.
  *  @warning all code assumes Xmin and Ymin are zero and Ymax and Xmax are
  *  equal...
- *  @todo Compile time options for headless version only
  *  @todo comment files*/
 
 #include "util.h"
@@ -292,7 +292,7 @@ static bool detect_projectile_collision(world_t *world, gladiator_t *g, bool hit
 		if(hit) {
 			hits[i] = true;
 			g->health -= projectile_damage;
-			world->gs[i]->hits++;
+			world->gs[projectile_team(p)]->hits++;
 			projectile_deactivate(world->ps[i]);
 			return true;
 		}
@@ -429,10 +429,10 @@ static void update_gladiator_inputs(world_t *w, gladiator_t *g, projectile_t *p,
 
 	if(arena_wraps_at_edges == false) {
 		double cval = 0.0;
-		cval = g->x == Xmin ? -0.5 : cval;
-		cval = g->x == Xmax ? -1.0 : cval;
-		cval = g->y == Ymin ? +0.5 : cval;
-		cval = g->y == Ymax ? +1.0 : cval;
+		cval = g->x <= Xmin ? -0.5 : cval;
+		cval = g->x >= Xmax ? -1.0 : cval;
+		cval = g->y <= Ymin ? +0.5 : cval;
+		cval = g->y >= Ymax ? +1.0 : cval;
 		inputs[GLADIATOR_IN_COLLISION_WALL] = cval;
 		if(cval != 0 && draw_gladiator_wall_collision)
 			draw_regular_polygon_filled(g->x, g->y, 0, gladiator_size, CIRCLE, WHITE);
@@ -458,10 +458,21 @@ static void update_gladiator_outputs(gladiator_t *g, projectile_t *p, double out
 {
 	/*most outputs are handled in "gladiator_update()"*/
 	bool fire = outputs[GLADIATOR_OUT_FIRE] > gladiator_fire_threshold;
-	if(fire && g->energy >= projectile_energy_cost) {
+	if(fire && g->energy >= projectile_energy_cost && p) {
 		g->energy -= projectile_energy_cost;
-		projectile_fire(p, g->x, g->y, g->orientation);
+		if(!(g->refire_timeout)) {
+			projectile_fire(p, g->team, g->x, g->y, g->orientation);
+			g->refire_timeout = gladiator_fire_timeout;
+		}
 	}
+}
+
+static projectile_t *find_free_projectile(projectile_t **ps, size_t count)
+{
+	for(size_t i = 0; i < count; i++)
+		if(!projectile_is_active(ps[i]))
+			return ps[i];
+	return NULL;
 }
 
 static void update_scene(world_t *w)
@@ -485,10 +496,6 @@ static void update_scene(world_t *w)
 		detect_projectile_collision(world, w->gs[i], hits);
 	for(unsigned i = 0; i < w->gladiator_count; i++)
 		detect_food_collision(world, w->gs[i]);
-	for(unsigned i = 0; i < w->projectile_count; i++)
-		projectile_update(world->ps[i]);
-	for(unsigned i = 0; i < w->food_count; i++)
-		food_update(world->fs[i]);
 	for(unsigned i = 0; i < w->gladiator_count; i++) {
 		gladiator_t  *g = w->gs[i];
 		projectile_t *p = w->ps[i];
@@ -502,8 +509,12 @@ static void update_scene(world_t *w)
 
 		update_gladiator_inputs(w, g, p, inputs, hit);
 		gladiator_update(g, inputs, outputs);
-		update_gladiator_outputs(g, w->ps[i], outputs);
+		update_gladiator_outputs(g, find_free_projectile(w->ps, w->projectile_count), outputs);
 	}
+	for(unsigned i = 0; i < w->projectile_count; i++)
+		projectile_update(world->ps[i]);
+	for(unsigned i = 0; i < w->food_count; i++)
+		food_update(world->fs[i]);
 }
 
 static void draw_debug_info(world_t *w)
@@ -552,13 +563,62 @@ static void update_fitness(gladiator_t **gs, size_t count)
 		gs[i]->fitness = gladiator_fitness(gs[i]);
 }
 
-/**@note make a tournament based operating mode
+static void mutate_gladiators(gladiator_t **gs, size_t count)
+{
+	for(size_t i = 0; i < count - 1; i++) {
+		gs[i]->mutations = gladiator_mutate(gs[i]);
+		gs[i]->total_mutations += gs[i]->mutations;
+	}
+}
+
+static void reinitialize_gladiator_starting_positions(gladiator_t **gs, size_t count)
+{
+	assert(gs);
+	if(arena_random_gladiator_start) {
+		for(size_t i = 0; i < count; i++) {
+			gs[i]->x = random_x();
+			gs[i]->y = random_y();
+			gs[i]->orientation = random_angle();
+		}
+	} else { /* non random start; gladiators facing outwards in a circle */
+		double radius = sqrt(Xmax * Ymax) / 4;
+		unsigned j = 0;
+		for(double i = 0; i < 2.0 * PI; i += (2.0 * PI) / count, j++) {
+			double x = (cos(i) * radius) + Xmax / 2;
+			double y = (sin(i) * radius) + Ymax / 2;
+			gs[j]->x = x;
+			gs[j]->y = y;
+			gs[j]->orientation = wrap_rad(i);
+		}
+	}
+}
+
+static void reinitialize_gladiators(gladiator_t **gs, size_t count)
+{
+	assert(gs);
+	for(size_t i = 0; i < count; i++) {
+		gs[i]->health = gladiator_health;
+		gs[i]->energy = gladiator_starting_energy;
+		gs[i]->hits = 0;
+		gs[i]->team = i;
+		gs[i]->foods = 0;
+		gs[i]->field_of_view = 0;
+		gs[i]->enemy_gladiator_detected = 0;
+		gs[i]->enemy_projectile_detected = 0;
+		gs[i]->food_detected = 0;
+		gs[i]->wall_contact_timer.i = 0;
+	}
+	reinitialize_gladiator_starting_positions(gs, count);
+}
+
+/**@todo make a tournament based operating mode
  *
  * A tournament based game mode of operation should be made, a population
  * faces off each other member and roulette wheel selection (and optionally
  * some cross over) decides the next generation.*/
 static void select_new_gladiators(gladiator_t **gs, size_t count)
 {
+	assert(gs);
 	update_fitness(gs, count);
 
 	qsort(gs, count, sizeof(gs[0]), fitness_compare_function);
@@ -582,31 +642,13 @@ static void select_new_gladiators(gladiator_t **gs, size_t count)
 		cell_delete(c);
 	}
 
-	for(size_t i = 0; i < count - 1; i++) {
-		gs[i]->mutations = gladiator_mutate(gs[i]);
-		gs[i]->total_mutations += gs[i]->mutations;
-	}
-
-	for(size_t i = 0; i < count; i++) {
-		gs[i]->health = gladiator_health;
-		gs[i]->energy = gladiator_starting_energy;
-		gs[i]->hits = 0;
-		gs[i]->team = i;
-		gs[i]->foods = 0;
-		/**@bug random location even in non random mode*/
-		gs[i]->x = random_x();
-		gs[i]->y = random_y();
-		gs[i]->field_of_view = 0;
-		gs[i]->orientation = random_float() * 2.0 * PI;
-		gs[i]->enemy_gladiator_detected = 0;
-		gs[i]->enemy_projectile_detected = 0;
-		gs[i]->food_detected = 0;
-		gs[i]->wall_contact_timer.i = 0;
-	}
+	mutate_gladiators(gs, count);
+	reinitialize_gladiators(gs, count);
 }
 
 static void new_generation(world_t *w)
 {
+	assert(w);
 	for(size_t i = 0; i < w->projectile_count; i++) /*disable all projectiles*/
 		projectile_deactivate(w->ps[i]);
 	w->alive = w->gladiator_count;
@@ -663,35 +705,27 @@ static void draw_scene(void)
 	glutPostRedisplay();
 }
 
-static world_t *initialize_arena(size_t gladiator_and_projectile_count, size_t food_count)
+static world_t *initialize_arena(size_t gladiator_count, size_t projectile_count, size_t food_count)
 {
 	world_t *w = allocate(sizeof(*w));
-	w->alive = gladiator_and_projectile_count;
-	w->gladiator_count = gladiator_and_projectile_count;
-	w->projectile_count = gladiator_and_projectile_count;
+	w->alive = gladiator_count;
+	w->gladiator_count = gladiator_count;
+	w->projectile_count = projectile_count;
 	w->food_count = food_active ? food_count : 0;
-	w->gs = allocate(sizeof(w->gs[0]) * gladiator_and_projectile_count);
-	w->ps = allocate(sizeof(w->ps[0]) * gladiator_and_projectile_count);
+	w->gs = allocate(sizeof(w->gs[0]) * gladiator_count);
+	w->ps = allocate(sizeof(w->ps[0]) * projectile_count);
 	w->fs = allocate(sizeof(w->fs[0]) * food_count);
 	w->player = player_new(0);
 	w->player->x = Xmax / 2.0;
 	w->player->y = Ymax / 2.0;
 
-	if(arena_random_gladiator_start) {
-		for(size_t i = 0; i < gladiator_and_projectile_count; i++) {
-			w->gs[i] = gladiator_new(i, random_x(), random_y(), random_angle());
-			w->ps[i] = projectile_new(i, 0, 0, 0);
-		}
-	} else { /* non random start; gladiators facing outwards in a circle */
-		double radius = sqrt(Xmax * Ymax) / 4;
-		unsigned j = 0;
-		for(double i = 0; i < 2.0 * PI; i += (2.0 * PI) / gladiator_and_projectile_count, j++) {
-			double x = (cos(i) * radius) + Xmax / 2;
-			double y = (sin(i) * radius) + Ymax / 2;
-			w->gs[j] = gladiator_new(j, x, y, wrap_rad(i ));
-			w->ps[j] = projectile_new(j, 0, 0, 0);
-		}
-	}
+	for(size_t i = 0; i < projectile_count; i++)
+		w->ps[i] = projectile_new(-1, 0, 0, 0);
+
+	for(size_t i = 0; i < gladiator_count; i++)
+		w->gs[i] = gladiator_new(i, 0, 0, 0);
+
+	reinitialize_gladiator_starting_positions(w->gs, gladiator_count);
 
 	for(size_t i = 0; i < w->food_count; i++)
 		w->fs[i] = food_new(random_x(), random_y(), random_angle());
@@ -827,7 +861,7 @@ done:
 	if(log_level_set)
 		program_log_level = log_level;
 
-	world = initialize_arena(arena_gladiator_count, arena_food_count);
+	world = initialize_arena(arena_gladiator_count, arena_projectile_count, arena_food_count);
 
 	if(program_run_headless) {
 		headless_loop(world, stdout, program_headless_loops, program_headless_loops == 0);

@@ -17,7 +17,7 @@
 typedef enum {
 	NIL,
 	INTEGER,
-	FLOAT,
+	FLOATING,
 	SYMBOL,
 	STRING,
 	CONS,
@@ -40,10 +40,10 @@ typedef struct cell_t {
 	unsigned    freeable: 1;
 } cell_t;
 
-#define STR(CELL) (assert(CELL->type == STRING),  (CELL)->p.string)
-#define SYM(CELL) (assert(CELL->type == SYMBOL),  (CELL)->p.string)
-#define INT(CELL) (assert(CELL->type == INTEGER), (CELL)->p.integer)
-#define FLT(CELL) (assert(CELL->type == FLOAT),   (CELL)->p.floating)
+#define STR(CELL) (assert(CELL->type == STRING),   (CELL)->p.string)
+#define SYM(CELL) (assert(CELL->type == SYMBOL),   (CELL)->p.string)
+#define INT(CELL) (assert(CELL->type == INTEGER),  (CELL)->p.integer)
+#define FLT(CELL) (assert(CELL->type == FLOATING), (CELL)->p.floating)
 
 #define CAAR(CELL) (car(car(CELL)))
 #define CADR(CELL) (car(cdr(CELL)))

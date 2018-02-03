@@ -14,7 +14,7 @@
 
 projectile_t *projectile_new(unsigned team, double x, double y, double orientation)
 {
-	assert(team < arena_gladiator_count);
+	assert(team < arena_gladiator_count || team == (unsigned)-1l);
 	assert(x >= Xmin && x <= Xmax);
 	assert(y >= Ymin && y <= Ymax);
 	projectile_t *p = allocate(sizeof(*p));
@@ -42,6 +42,7 @@ void projectile_deactivate(projectile_t *p)
 {
 	assert(p);
 	p->travelled += projectile_range;
+	p->team = (unsigned)-1l;
 }
 
 void projectile_draw(projectile_t *p)
@@ -50,6 +51,12 @@ void projectile_draw(projectile_t *p)
 	if(!projectile_is_active(p))
 		return;
 	draw_regular_polygon_filled(p->x, p->y, p->orientation, projectile_size, TRIANGLE, team_to_color(p->team));
+}
+
+unsigned projectile_team(projectile_t *p)
+{
+	assert(p);
+	return p->team;
 }
 
 void projectile_update(projectile_t *p)
@@ -68,7 +75,7 @@ void projectile_update(projectile_t *p)
 		projectile_deactivate(p);
 }
 
-bool projectile_fire(projectile_t *p, double x, double y, double orientation)
+bool projectile_fire(projectile_t *p, unsigned team, double x, double y, double orientation)
 {
 	assert(p);
 	if(projectile_is_active(p))
@@ -77,6 +84,7 @@ bool projectile_fire(projectile_t *p, double x, double y, double orientation)
 	p->x = wrap_or_limit_x(x);
 	p->y = wrap_or_limit_y(y);
 	p->orientation = orientation;
+	p->team = team;
 	return true;
 }
 

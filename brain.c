@@ -33,16 +33,10 @@ struct brain_t {
 
 static double randomer(double original)
 {
-	/**@note the method by which mutations happen could be configurable,
-	 * but I believe that this might be the best method */
 	double r = random_float() * brain_max_weight_increment;
 	if(random_float() < 0.5)
-		r *= -1;
-	if(random_float() < 0.5)
-		r += original;
-	else
-		r -= original;
-	return r;
+		r = -r;
+	return r + original;
 }
 
 static neuron_t *neuron_new(bool rand, size_t length)
@@ -222,11 +216,11 @@ static double calculate_response(neuron_t *n, const double in[], size_t length)
 	return 0.0;
 }
 
-void update_layer(layer_t *l, const double inputs[], size_t in_length)
+void update_layer(layer_t *l, const double inputs[], size_t in_length, size_t start)
 {
 	assert(l && inputs && in_length);
 	size_t length = MIN(l->length, in_length);
-	for(size_t i = 0; i < length; i++)
+	for(size_t i = start; i < length; i++)
 		l->outputs[i] = calculate_response(l->neurons[i], inputs, length);
 }
 
@@ -234,15 +228,11 @@ void brain_update(brain_t *b, const double inputs[], size_t in_length, double ou
 {
 	for(size_t i = 0; i < in_length; i++)
 		b->inputs[i] = inputs[i];
-	update_layer(b->layers[0], b->inputs, in_length);
-	/** @note This is an experiment to see if adding state helps, the
-	 * outputs of the previous run are fed into the current one with
-	 * addition */
-	if(brain_mix_in_feedback)
-		for(size_t i = 0; i < b->length; i++)
-			b->layers[0]->outputs[i] += b->layers[b->depth - 1]->outputs[i];
+	update_layer(b->layers[0], b->inputs, in_length, 0);
+	if(brain_mix_in_feedback && ((b->length - in_length) < b->length))
+		update_layer(b->layers[0], b->layers[b->depth - 1]->outputs, b->length - in_length, in_length);
 	for(size_t i = 1; i < b->depth; i++)
-		update_layer(b->layers[i], b->layers[i-1]->outputs, b->layers[i-1]->length);
+		update_layer(b->layers[i], b->layers[i-1]->outputs, b->layers[i-1]->length, 0);
 	for(size_t i = 0; i < out_length; i++)
 		outputs[i] = b->layers[b->depth - 1]->outputs[i];
 }
@@ -275,7 +265,7 @@ neuron_t *neuron_deserialize(cell_t *c, size_t length)
 	neuron_t *n = neuron_new(false, length);
 	for(size_t i = 0 ; type(weights) != NIL && i < length; i++, weights = cdr(weights)) {
 		cell_type_e wt = type(car(weights));
-		if(wt != FLOAT) {
+		if(wt != FLOATING) {
 			warning("incorrect weight type %u", wt);
 			goto fail;
 		}

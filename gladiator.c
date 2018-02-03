@@ -42,7 +42,6 @@ const char *lookup_gladiator_io_name(bool lookup_input, unsigned port)
 	return NULL;
 }
 
-
 static void update_field_of_view(gladiator_t *g, double outputs[])
 {
 	assert(g && outputs);
@@ -113,7 +112,6 @@ void gladiator_update(gladiator_t *g, const double inputs[], double outputs[])
 void gladiator_draw(gladiator_t *g)
 {
 	assert(g);
-	/**@todo draw gladiator inputs as "eyes" on the gladiator*/
 	color_t food = g->food_detected ? BLUE : GREEN;
 	draw_regular_polygon_filled(g->x, g->y, g->orientation, g->radius/4, CIRCLE, food);
 	draw_regular_polygon_filled(g->x, g->y, g->orientation, g->radius/2, CIRCLE, g->health > 0 ? WHITE : BLACK);
@@ -130,7 +128,7 @@ void gladiator_draw(gladiator_t *g)
 
 gladiator_t *gladiator_new(unsigned team, double x, double y, double orientation)
 {
-	assert(team < arena_gladiator_count);
+	/*assert(team < arena_gladiator_count);*/
 	assert(x >= Xmin && x <= Xmax);
 	assert(y >= Ymin && y <= Ymax);
 	gladiator_t *g = allocate(sizeof(*g));
@@ -181,7 +179,8 @@ double gladiator_fitness(gladiator_t *g)
 	fitness += g->hits   * fitness_weight_hits;
 	fitness += g->energy * fitness_weight_energy;
 	fitness += g->foods  * fitness_weight_food;
-	fitness += g->rank   * fitness_weight_rank;
+	fitness += g->round  * fitness_weight_round;
+	fitness += g->time_alive * fitness_weight_time_alive;
 	fitness += timer_result(&g->wall_contact_timer) * fitness_weight_wall_time;
 	return fitness;
 }
@@ -191,7 +190,6 @@ gladiator_t *gladiator_breed(gladiator_t *a, gladiator_t *b)
 	gladiator_t *child = gladiator_new(a->team, 0, 0, 0);
 	brain_delete(child->brain);
 	child->mutations = MAX(a->mutations, b->mutations);
-	child->rank      = MAX(a->rank,      b->rank);
 	child->fitness   = MAX(a->fitness,   b->fitness);
 	child->brain     = brain_crossover(a->brain, b->brain);
 	return child;

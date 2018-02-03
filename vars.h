@@ -23,7 +23,8 @@ typedef enum {
 /**@todo make the control keys configurable, such as "q" to quit */
 #define CONFIG_X_MACRO\
 	X(unsigned,  arena_food_count,                   4,       false)\
-	X(unsigned,  arena_gladiator_count,              4,       false)\
+	X(unsigned,  arena_gladiator_count,              2,       false)\
+	X(unsigned,  arena_gladiator_rounds,             5,       false)\
 	X(unsigned,  arena_projectile_count,             50,      false)\
 	X(bool,      arena_paused,                       false,   true)\
 	X(bool,      arena_random_gladiator_start,       true,    true)\
@@ -41,8 +42,9 @@ typedef enum {
 	X(double,    fitness_weight_food,                1.0,     true)\
 	X(double,    fitness_weight_health,              1.5,     true)\
 	X(double,    fitness_weight_hits,                1.0,     true)\
-	X(double,    fitness_weight_rank,                0.001,   true)\
+	X(double,    fitness_weight_round,               5.000,   true)\
 	X(double,    fitness_weight_wall_time,          -0.1,     true)\
+	X(double,    fitness_weight_time_alive,          0.001,   true)\
 	X(bool,      food_active,                        true,    true)\
 	X(unsigned,  food_control_method,                1,       true)\
 	X(double,    food_distance_per_tick,             0.01,    true)\
@@ -64,7 +66,7 @@ typedef enum {
 	X(double,    gladiator_min_field_of_view,        0.15,    true)\
 	X(double,    gladiator_size,                     3.0,     false)\
 	X(double,    gladiator_starting_energy,          0.0,     true)\
-	X(double,    gladiator_turn_rate_divisor,         5.0,    false)\
+	X(double,    gladiator_turn_rate_divisor,        40.0,    false)\
 	X(double,    gladiator_vision,                   400.0,   true)\
 	X(double,    gladiator_wall_time,                10.0,    true)\
 	X(double,    max_ticks_per_generation,           4000.0,  false)\
@@ -72,6 +74,8 @@ typedef enum {
 	X(bool,      print_arena_tick,                   true,    true)\
 	X(bool,      print_fps,                          true,    true)\
 	X(bool,      print_generation,                   true,    true)\
+	X(bool,      print_round,                        true,    true)\
+	X(bool,      print_match,                        true,    true)\
 	X(bool,      print_gladiator_energy,             true,    true)\
 	X(bool,      print_gladiator_fitness,            true,    true)\
 	X(bool,      print_gladiator_health,             true,    true)\
@@ -105,7 +109,8 @@ typedef enum {
 	X(double,    player_size,                        3.0,     false)\
 	X(double,    player_starting_energy,             0.0,     true)\
 	X(double,    player_turn_rate_divisor,           6.0,     false)\
-	X(bool,      use_crossover,                      true,    true)\
+	X(bool,      breeding_on,                        true,    true)\
+	X(bool,      breeding_rate,                      0.5,     true)\
 	X(double,    window_height,                      400.0,   true)\
 	X(double,    window_width,                       600.0,   true)\
 	X(double,    window_x_starting_position,         60.0,    true)\

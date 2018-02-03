@@ -57,10 +57,10 @@ double deg2rad(double deg)
 
 static uint32_t temper(uint32_t x)
 {
-    x ^= x>>11;
-    x ^= x<<7 & 0x9D2C5680;
-    x ^= x<<15 & 0xEFC60000;
-    x ^= x>>18;
+    x ^= x >> 11;
+    x ^= x << 7 & 0x9D2C5680;
+    x ^= x << 15 & 0xEFC60000;
+    x ^= x >> 18;
     return x;
 }
 
@@ -147,4 +147,14 @@ cartesian_t polar_to_cartesian(const polar_t p)
 	c.y = sin(p.theta) * p.rho;
 	return c;
 }
+
+unsigned binary_logarithm_base_2(unsigned x)
+{
+	unsigned b = 0;
+	assert(x);
+	while(x >>= 1)
+		b++;
+	return b;
+}
+
 

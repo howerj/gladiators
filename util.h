@@ -54,4 +54,6 @@ bool timer_result(timer_tick_t *t);
 polar_t cartesian_to_polar(const cartesian_t c);
 cartesian_t polar_to_cartesian(polar_t t);
 
+unsigned binary_logarithm_base_2(unsigned x);
+
 #endif

@@ -34,12 +34,12 @@ void player_delete(player_t *p)
 static void update_orientation(player_t *p, bool left, bool right)
 {
 	assert(p);
-	p->orientation  -= wrap_rad(right);
-	p->orientation  += wrap_rad(left);
+	p->orientation  -= wrap_rad(right) / player_turn_rate_divisor;
+	p->orientation  += wrap_rad(left)  / player_turn_rate_divisor;
 	p->orientation   = wrap_rad(p->orientation);
 }
 
-void update_distance(player_t *p, bool forward)
+static void update_distance(player_t *p, bool forward)
 {
 	double distance = player_distance_per_tick * forward;
 	distance = MAX(0, MIN(player_distance_per_tick, distance));

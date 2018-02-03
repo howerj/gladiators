@@ -20,12 +20,13 @@ typedef struct {
 	unsigned team; /**< this gladiators team*/
 	unsigned hits; /**< hits the gladiator scored on other gladiators*/
 	unsigned foods; /**< number of food items collected*/
+	unsigned round; /**< current round gladiator is in*/
 	double energy; /**< energy of gladiator, needed to fire weapon*/
 	bool enemy_gladiator_detected; /**< set true if enemy has been detected*/
 	bool enemy_projectile_detected; /**< set true if enemy projectile has been detected*/
 	bool food_detected; /**< set true if food has been detected */
 	double state1; /**< internal state, experimental*/
-	unsigned rank; /**< when the gladiator died, if it did*/
+	unsigned time_alive; /**< when the gladiator died, if it did*/
 	unsigned mutations; /**< mutations from previous round*/
 	unsigned total_mutations; /**< total mutations*/
 	unsigned refire_timeout; /**< time left until next fire allowed */

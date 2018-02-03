@@ -210,13 +210,14 @@ static double calculate_response(neuron_t *n, const double in[], size_t length)
 	case SIN_FUNCTION_E:
 				return sin(total);
 	default:                
+				error("invalid neuron response: %u", brain_activation_function);
 				break;
 	}
 	error("invalid calculation method: %u", brain_activation_function);
 	return 0.0;
 }
 
-void update_layer(layer_t *l, const double inputs[], size_t in_length, size_t start)
+static inline void update_layer(layer_t *l, const double inputs[], const size_t in_length, const size_t start)
 {
 	assert(l && inputs && in_length);
 	size_t length = MIN(l->length, in_length);
@@ -224,7 +225,7 @@ void update_layer(layer_t *l, const double inputs[], size_t in_length, size_t st
 		l->outputs[i] = calculate_response(l->neurons[i], inputs, length);
 }
 
-void brain_update(brain_t *b, const double inputs[], size_t in_length, double outputs[], size_t out_length)
+void brain_update(brain_t *restrict b, const double *restrict inputs, const size_t in_length, double *restrict outputs, const size_t out_length)
 {
 	for(size_t i = 0; i < in_length; i++)
 		b->inputs[i] = inputs[i];

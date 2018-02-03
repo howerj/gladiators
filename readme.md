@@ -587,12 +587,17 @@ one can last the longest.
 * Work on S-Expression library so state can be saved and loaded in again, this
 should be turned into a standalone library.
 * Work on adding a player: They should only be able to see what a gladiator
-can.
+can, which is quite limiting, adding to the challenge.
 * The selection mechanism needs to be improved, each generation should have a
 much higher population count, and the selection mechanisms needs to be
 changed. A population of about 50 gladiators would fight in a tournament, with
 greater probability of reproduction going to the winners.
+* Different types of AI brains could be loaded, for example the best evolved
+neural network AI could go up against a manually programmed one, using
+[GPGOAL][] as the engine. (Also see
+<http://alumni.media.mit.edu/~jorkin/goap.html>)
 
+[GPGOAP]: https://github.com/stolk/GPGOAP
 [A video]: https://www.youtube.com/watch?v=u2t77mQmJiY
 [doublezoom.free.fr]: http://doublezoom.free.fr/programmation/AG_Exemple_Fighting.php
 [Glut]: https://www.opengl.org/resources/libraries/glut/

@@ -42,7 +42,7 @@ color_t team_to_color(unsigned team)
 	static bool warned = false; /**@warning not threadsafe, although of no real consequence*/
 	if(team >= sizeof(colors)/sizeof(colors[0])) {
 		if(!warned) {
-			warning("gladiator: ran out of team colors %u");
+			warning("gladiator: ran out of team colors %u", team);
 			warned = true;
 		}
 		return MAGENTA;

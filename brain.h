@@ -29,7 +29,8 @@ typedef enum {
 brain_t *brain_new(bool alloc_layers, bool rand, size_t length, size_t depth);
 brain_t *brain_copy(const brain_t *b);
 void brain_delete(brain_t *b);
-void brain_update(brain_t *b, const double inputs[], size_t in_length, double outputs[], size_t out_length);
+void brain_update(brain_t *restrict b, const double *restrict inputs, const size_t in_length, double *restrict outputs, const size_t out_length);
+
 unsigned brain_mutate(brain_t *b);
 cell_t *brain_serialize(brain_t *b);
 brain_t *brain_deserialize(cell_t *c);

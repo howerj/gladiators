@@ -11,6 +11,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdint.h>
 
 #define UNUSED(X) ((void)(X))
 
@@ -42,6 +43,8 @@ double rad2deg(double rad);
 double deg2rad(double deg);
 void random_seed(double seed);
 double random_float(void);
+uint64_t random_u64(void);
+
 
 double wrap_or_limit_x(double x);
 double wrap_or_limit_y(double y);

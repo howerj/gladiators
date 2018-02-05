@@ -24,7 +24,7 @@ typedef enum {
 #define CONFIG_X_MACRO\
 	X(unsigned,  arena_food_count,                   4,       false)\
 	X(unsigned,  arena_gladiator_count,              2,       false)\
-	X(unsigned,  arena_gladiator_rounds,             5,       false)\
+	X(unsigned,  arena_gladiator_rounds,             6,       false)\
 	X(unsigned,  arena_projectile_count,             50,      false)\
 	X(bool,      arena_paused,                       false,   true)\
 	X(bool,      arena_random_gladiator_start,       true,    true)\
@@ -38,6 +38,7 @@ typedef enum {
 	X(bool,      draw_gladiator_target_lines,        true,    true)\
 	X(bool,      draw_gladiator_wall_collision,      true,    true)\
 	X(bool,      draw_circle_arc_debug_line,         false,   true)\
+	X(double,    fitness_weight_ancestors,           0.0,     true)\
 	X(double,    fitness_weight_energy,              0.0,     true)\
 	X(double,    fitness_weight_food,                0.2,     true)\
 	X(double,    fitness_weight_health,              1.5,     true)\
@@ -53,8 +54,8 @@ typedef enum {
 	X(bool,      food_respawns,                      true,    true)\
 	X(double,    food_size,                          1.0,     false)\
 	X(unsigned,  gladiator_bounce_off_walls,         false,   true)\
-	X(unsigned,  gladiator_brain_depth,              4,       false)\
-	X(unsigned,  gladiator_brain_length,             15,      false)\
+	X(unsigned,  gladiator_brain_depth,              5,       false)\
+	X(unsigned,  gladiator_brain_length,             25,      false)\
 	X(double,    gladiator_distance_per_tick,        1.0,     true)\
 	X(double,    gladiator_energy_increment,         1.0,     true)\
 	X(double,    gladiator_field_of_view_divisor,    10.00,   false)\
@@ -70,7 +71,7 @@ typedef enum {
 	X(double,    gladiator_vision,                   400.0,   true)\
 	X(double,    gladiator_wall_time,                5.0,     true)\
 	X(double,    max_ticks_per_generation,           10000.0, false)\
-	X(double,    mutation_rate,                      0.075,   true)\
+	X(double,    mutation_rate,                      0.175,   true)\
 	X(bool,      print_arena_tick,                   true,    true)\
 	X(bool,      print_fps,                          true,    true)\
 	X(bool,      print_generation,                   true,    true)\
@@ -90,6 +91,19 @@ typedef enum {
 	X(bool,      print_gladiator_total_mutations,    true,    true)\
 	X(bool,      print_gladiator_x,                  false,   true)\
 	X(bool,      print_gladiator_y,                  false,   true)\
+	X(bool,      input_gladiator_hit,                true,    true)\
+	X(bool,      input_gladiator_can_fire,           true,    true)\
+	X(bool,      input_gladiator_field_of_view,      true,    true)\
+	X(bool,      input_gladiator_vision_food,        true,    true)\
+	X(bool,      input_gladiator_vision_projectile,  true,    true)\
+	X(bool,      input_gladiator_vision_enemy,       true,    true)\
+	X(bool,      input_gladiator_random,             true,    true)\
+	X(bool,      input_gladiator_x,                  true,    true)\
+	X(bool,      input_gladiator_y,                  true,    true)\
+	X(bool,      input_gladiator_orientation,        true,    true)\
+	X(bool,      input_gladiator_state1,             true,    true)\
+	X(bool,      input_gladiator_collision_enemy,    true,    true)\
+	X(bool,      input_gladiator_collision_wall,     true,    true)\
 	X(unsigned,  program_headless_loops,             200,     true)\
 	X(unsigned,  program_log_level,                  NOTE,    true)\
 	X(bool,      program_pause_after_new_generation, false,   true)\
@@ -110,7 +124,9 @@ typedef enum {
 	X(double,    player_starting_energy,             0.0,     true)\
 	X(double,    player_turn_rate_divisor,           6.0,     false)\
 	X(bool,      breeding_on,                        true,    true)\
-	X(bool,      breeding_rate,                      0.5,     true)\
+	X(double,    breeding_rate,                      0.9,     true)\
+	X(double,    breeding_crossover_rate,            0.5,     true)\
+	X(unsigned,  breeding_crossover_method,          1,       true)\
 	X(double,    window_height,                      400.0,   true)\
 	X(double,    window_width,                       600.0,   true)\
 	X(double,    window_x_starting_position,         60.0,    true)\

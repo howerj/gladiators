@@ -180,11 +180,12 @@ double gladiator_fitness(gladiator_t *g)
 {
 	assert(g);
 	double fitness = 0.0;
-	fitness += g->health * fitness_weight_health;
-	fitness += g->hits   * fitness_weight_hits;
-	fitness += g->energy * fitness_weight_energy;
-	fitness += g->foods  * fitness_weight_food;
-	fitness += g->round  * fitness_weight_round;
+	fitness += g->fitness * fitness_weight_ancestors;
+	fitness += g->health  * fitness_weight_health;
+	fitness += g->hits    * fitness_weight_hits;
+	fitness += g->energy  * fitness_weight_energy;
+	fitness += g->foods   * fitness_weight_food;
+	fitness += g->round   * fitness_weight_round;
 	fitness += g->time_alive * fitness_weight_time_alive;
 	fitness += timer_result(&g->wall_contact_timer) * fitness_weight_wall_time;
 	return fitness;
@@ -195,7 +196,7 @@ gladiator_t *gladiator_breed(gladiator_t *a, gladiator_t *b)
 	gladiator_t *child = gladiator_new(a->team, 0, 0, 0);
 	brain_delete(child->brain);
 	child->mutations = MAX(a->mutations, b->mutations);
-	child->fitness   = MAX(a->fitness,   b->fitness);
+	child->fitness   = (a->fitness + b->fitness) / 2.0;
 	child->brain     = brain_crossover(a->brain, b->brain);
 	return child;
 }

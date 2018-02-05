@@ -78,6 +78,13 @@ static uint32_t prng(prng_t *state)
 	return lcg64_temper(&state->seed);
 }
 
+static prng_t rstate;
+
+uint64_t random_u64(void)
+{
+	return (((uint64_t)prng(&rstate)) << 32u) | ((uint64_t)prng(&rstate));
+}
+
 static double prngf(prng_t *state) 
 {
 	assert(state);
@@ -86,7 +93,6 @@ static double prngf(prng_t *state)
 	return r;
 }
 
-static prng_t rstate;
 void random_seed(double seed)
 {
 	rstate.seed = seed;

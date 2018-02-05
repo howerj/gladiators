@@ -31,6 +31,12 @@ struct brain_t {
 	layer_t **layers;
 };
 
+typedef enum {
+	CROSSOVER_OFF,
+	CROSSOVER_LAYER_SWAP,
+	CROSSOVER_NEURON_SWAP
+} crossover_method;
+
 static double randomer(double original)
 {
 	double r = random_float() * brain_max_weight_increment;
@@ -321,6 +327,20 @@ fail:
 	return NULL;
 }
 
+layer_t *layer_crossover(layer_t *a, layer_t *b)
+{
+	assert(a && b);
+	assert(a->length == b->length);
+	layer_t *l = layer_new(true, false, a->length);
+	bool swap = false;
+	for(size_t i = 0; i < a->length; i++) {
+		if(random_float() > breeding_crossover_rate)
+			swap = !swap;
+		neuron_copy_over(l->neurons[i], swap ? a->neurons[i] : b->neurons[i]);
+	}
+	return l;
+}
+
 /**@note different crossover strategies should be experimented with, either
  * crossing over at random points, or crossing at finer points within layers */
 brain_t *brain_crossover(brain_t *a, brain_t *b)
@@ -333,10 +353,21 @@ brain_t *brain_crossover(brain_t *a, brain_t *b)
 	c->inputs = allocate(sizeof(c->inputs[0]) * c->length);
 	c->layers = allocate(sizeof(c->layers[0]) * c->depth);
 	for(size_t i = 0; i < c->depth; i++) {
-		if(i & 1)
-			c->layers[i] = layer_copy(a->layers[i]);
-		else
-			c->layers[i] = layer_copy(b->layers[i]);
+		switch(breeding_crossover_method) {
+		case CROSSOVER_OFF:
+			break;
+		case CROSSOVER_LAYER_SWAP:
+			if(i & 1)
+				c->layers[i] = layer_copy(a->layers[i]);
+			else
+				c->layers[i] = layer_copy(b->layers[i]);
+			break;
+		case CROSSOVER_NEURON_SWAP:
+			c->layers[i] = layer_crossover(a->layers[i], b->layers[i]);
+			break;
+		default:
+			fatal("invalid crossover method: %u", breeding_crossover_method);
+		}
 	}
 	return c;
 }

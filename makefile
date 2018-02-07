@@ -1,4 +1,8 @@
+ifeq ($(OS),Windows_NT) # Windows MinGW
+LDFLAGS  = -lfreeglut -lopengl32 -lm
+else # Unixen
 LDFLAGS  = -lglut -lGL -lm
+endif
 CFLAGS   = -std=c99 -Wall -Wextra -g -O3 -ffast-math
 RM      := rm
 SOURCES := ${wildcard *.c}

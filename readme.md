@@ -32,11 +32,19 @@ source code for this application, which is a shame, the video shows the
 gladiators learning how to move, how to fire, and eventually how to dodge enemy
 projectiles.
 
+## Building
+
+To build [gcc][] (or a suitable C compiler), [make][] (GNU Make was used), 
+and [OpenGl][]/[Glut][] (pre-compiled binaries are available for most Linux
+distributions as well as Windows) are needed. Type 'make' to build and 'make
+run' to run the default configuration, this should take a while to run and then
+pop up a window with some 'evolved' gladiators.
+
 ## Architecture and Theory
 
 As this project was meant to be an introduction for the author into both
 [OpenGl][] and [neural networks][] the theory will be brief and light. For a
-good introduction to [neural networks][] see the [Usenet FAQ][] for them.
+good introduction to [neural networks][] see the [Usenet FAQ][].
 
 ### Game mechanics
 
@@ -611,7 +619,9 @@ neural network AI could go up against a manually programmed one, using
 [Usenet FAQ]: ftp://ftp.sas.com/pub/neural/FAQ.html
 [gladiators-1]: img/gladiators-1.png
 [smooth]: https://en.wikipedia.org/wiki/Smoothness
-
+[gcc]: https://gcc.gnu.org/
+[make]: https://www.gnu.org/software/make/
+[glut]: http://freeglut.sourceforge.net/
 
 <style type="text/css">body{margin:40px auto;max-width:850px;line-height:1.6;font-size:16px;color:#444;padding:0 10px}h1,h2,h3{line-height:1.2}</style>
 

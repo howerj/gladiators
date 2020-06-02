@@ -28,22 +28,20 @@ static const char *gladiator_output_names[] = {
 #undef X
 };
 
-const char *lookup_gladiator_io_name(bool lookup_input, unsigned port)
-{
-	if(lookup_input) {
-		if(port >= GLADIATOR_IN_LAST_INPUT)
+const char *lookup_gladiator_io_name(bool lookup_input, unsigned port) {
+	if (lookup_input) {
+		if (port >= GLADIATOR_IN_LAST_INPUT)
 			error("'%u' is not a valid gladiator input port");
 		return gladiator_input_names[port];
 	} else {
-		if(port >= GLADIATOR_OUT_LAST_OUTPUT)
+		if (port >= GLADIATOR_OUT_LAST_OUTPUT)
 			error("'%u' is not a valid gladiator output port");
 		return gladiator_output_names[port];
 	}
 	return NULL;
 }
 
-static void update_field_of_view(gladiator_t *g, double outputs[])
-{
+static void update_field_of_view(gladiator_t *g, double outputs[]) {
 	assert(g && outputs);
 	g->field_of_view += outputs[GLADIATOR_OUT_FIELD_OF_VIEW_OPEN] / gladiator_field_of_view_divisor;
 	g->field_of_view -= outputs[GLADIATOR_OUT_FIELD_OF_VIEW_CLOSE] / gladiator_field_of_view_divisor;
@@ -51,16 +49,14 @@ static void update_field_of_view(gladiator_t *g, double outputs[])
 	g->field_of_view = MAX(g->field_of_view, gladiator_min_field_of_view);
 }
 
-static void update_orientation(gladiator_t *g, double outputs[])
-{
+static void update_orientation(gladiator_t *g, double outputs[]) {
 	assert(g && outputs);
-	g->orientation  += wrap_rad(outputs[GLADIATOR_OUT_TURN_LEFT]) / gladiator_turn_rate_divisor; 
+	g->orientation  += wrap_rad(outputs[GLADIATOR_OUT_TURN_LEFT]) / gladiator_turn_rate_divisor;
 	g->orientation  -= wrap_rad(outputs[GLADIATOR_OUT_TURN_RIGHT]) / gladiator_turn_rate_divisor;
 	g->orientation   = wrap_rad(g->orientation);
 }
 
-static void update_distance(gladiator_t *g, double outputs[])
-{
+static void update_distance(gladiator_t *g, double outputs[]) {
 	assert(g && outputs);
 	/**@todo add inertia */
 	double distance = gladiator_distance_per_tick * outputs[GLADIATOR_OUT_MOVE_FORWARD];
@@ -70,31 +66,29 @@ static void update_distance(gladiator_t *g, double outputs[])
 	g->y += distance * sin(g->orientation);
 	g->y = wrap_or_limit_y(g->y);
 
-	if(gladiator_bounce_off_walls) {
-		if(g->y == Ymax || g->y == Ymin)
+	if (gladiator_bounce_off_walls) {
+		if (g->y == Ymax || g->y == Ymin)
 			g->orientation = wrap_rad(-(g->orientation));
-		if(g->x == Xmax || g->x == Xmin)
+		if (g->x == Xmax || g->x == Xmin)
 			g->orientation = wrap_rad(-(g->orientation + PI));
 	}
 }
 
-bool gladiator_is_dead(gladiator_t *g)
-{
+bool gladiator_is_dead(gladiator_t *g) {
 	assert(g);
 	return g->health < 0;
 }
 
-void gladiator_update(gladiator_t *g, const double inputs[], double outputs[])
-{
+void gladiator_update(gladiator_t *g, const double inputs[], double outputs[]) {
 	assert(g);
-	if(gladiator_is_dead(g))
+	if (gladiator_is_dead(g))
 		return;
-	if(g->energy < gladiator_max_energy)
+	if (g->energy < gladiator_max_energy)
 		g->energy += gladiator_energy_increment;
 	g->enemy_gladiator_detected  = inputs[GLADIATOR_IN_VISION_ENEMY] > 0.0;
 	g->enemy_projectile_detected = inputs[GLADIATOR_IN_VISION_PROJECTILE] > 0.0;
 	g->food_detected = inputs[GLADIATOR_IN_VISION_FOOD] > 0.0;
-	if(g->refire_timeout)
+	if (g->refire_timeout)
 		g->refire_timeout--;
 
 	brain_update(g->brain, inputs, GLADIATOR_IN_LAST_INPUT, outputs, GLADIATOR_OUT_LAST_OUTPUT);
@@ -103,14 +97,13 @@ void gladiator_update(gladiator_t *g, const double inputs[], double outputs[])
 	update_field_of_view(g, outputs);
 	update_orientation(g, outputs);
 	update_distance(g, outputs);
-	if(arena_wraps_at_edges == false && (g->x == Xmax || g->x == Xmin || g->y == Ymax || g->y == Ymin))
+	if (arena_wraps_at_edges == false && (g->x == Xmax || g->x == Xmin || g->y == Ymax || g->y == Ymin))
 		timer_tick(&g->wall_contact_timer);
-	else if(!timer_result(&g->wall_contact_timer))
+	else if (!timer_result(&g->wall_contact_timer))
 		timer_untick(&g->wall_contact_timer);
 }
 
-void gladiator_draw(gladiator_t *g)
-{
+void gladiator_draw(gladiator_t *g) {
 	assert(g);
 	const color_t *food = g->food_detected ? BLUE : GREEN;
 	draw_regular_polygon_filled(g->x, g->y, g->orientation, g->radius/4, CIRCLE, food);
@@ -120,15 +113,14 @@ void gladiator_draw(gladiator_t *g)
 
 	const color_t *projectile = g->enemy_projectile_detected ? RED : GREEN;
 	draw_line(g->x, g->y, g->orientation, g->radius*2, g->radius/2, projectile);
-	if(!gladiator_is_dead(g) && draw_gladiator_target_lines) {
+	if (!gladiator_is_dead(g) && draw_gladiator_target_lines) {
 		const color_t *target = g->enemy_gladiator_detected ? RED : GREEN;
 		draw_line(g->x, g->y, g->orientation - g->field_of_view/2, Ymax/5, g->radius/2, target);
 		draw_line(g->x, g->y, g->orientation + g->field_of_view/2, Ymax/5, g->radius/2, target);
 	}
 }
 
-gladiator_t *gladiator_new(unsigned team, double x, double y, double orientation)
-{
+gladiator_t *gladiator_new(unsigned team, double x, double y, double orientation) {
 	/*assert(team < arena_gladiator_count);*/
 	assert(x >= Xmin && x <= Xmax);
 	assert(y >= Ymin && y <= Ymax);
@@ -141,7 +133,7 @@ gladiator_t *gladiator_new(unsigned team, double x, double y, double orientation
 	g->health = gladiator_health;
 	g->radius = gladiator_size;
 	g->color.a = 1.0;
-	g->color.r = random_float()*0.8; 
+	g->color.r = random_float()*0.8;
 	g->color.g = random_float()*0.8;
 	g->color.b = random_float()*0.8;
 	size_t length = MAX(gladiator_brain_length, GLADIATOR_IN_LAST_INPUT);
@@ -150,22 +142,19 @@ gladiator_t *gladiator_new(unsigned team, double x, double y, double orientation
 	return g;
 }
 
-void gladiator_delete(gladiator_t *g)
-{
+void gladiator_delete(gladiator_t *g) {
 	assert(g);
-	if(g->brain)
+	if (g->brain)
 		brain_delete(g->brain);
 	free(g);
 }
 
-unsigned gladiator_mutate(gladiator_t *g)
-{
+unsigned gladiator_mutate(gladiator_t *g) {
 	assert(g);
 	return brain_mutate(g->brain);
 }
 
-gladiator_t *gladiator_copy(gladiator_t *g)
-{
+gladiator_t *gladiator_copy(gladiator_t *g) {
 	assert(g);
 	gladiator_t *n = gladiator_new(g->team, g->x, g->y, g->orientation);
 	brain_delete(n->brain);
@@ -176,8 +165,7 @@ gladiator_t *gladiator_copy(gladiator_t *g)
 	return n;
 }
 
-double gladiator_fitness(gladiator_t *g)
-{
+double gladiator_fitness(gladiator_t *g) {
 	assert(g);
 	double fitness = 0.0;
 	fitness += g->fitness * fitness_weight_ancestors;
@@ -191,8 +179,7 @@ double gladiator_fitness(gladiator_t *g)
 	return fitness;
 }
 
-gladiator_t *gladiator_breed(gladiator_t *a, gladiator_t *b)
-{
+gladiator_t *gladiator_breed(gladiator_t *a, gladiator_t *b) {
 	gladiator_t *child = gladiator_new(a->team, 0, 0, 0);
 	brain_delete(child->brain);
 	child->mutations = MAX(a->mutations, b->mutations);
@@ -201,8 +188,7 @@ gladiator_t *gladiator_breed(gladiator_t *a, gladiator_t *b)
 	return child;
 }
 
-cell_t *gladiator_serialize(gladiator_t *g)
-{
+cell_t *gladiator_serialize(gladiator_t *g) {
 	assert(g && g->brain);
 
 	cell_t *b = brain_serialize(g->brain);
@@ -227,16 +213,15 @@ cell_t *gladiator_serialize(gladiator_t *g)
 	return c;
 }
 
-gladiator_t *gladiator_deserialize(cell_t *c)
-{
+gladiator_t *gladiator_deserialize(cell_t *c) {
 	assert(c);
-	gladiator_t *g = gladiator_new(0, 0, 0, 0);	
+	gladiator_t *g = gladiator_new(0, 0, 0, 0);
 	brain_delete(g->brain);
 	g->brain = NULL;
 	intptr_t team = 0, hits = 0, foods = 0, mutations = 0, total_mutations = 0;
 	cell_t *cb = NULL;
 
-	int r = scanner(c, 			
+	int r = scanner(c,
 			"gladiator "
 			"(x %f) (y %f) (orientation %f) "
 			"(field-of-view %f) "
@@ -252,17 +237,16 @@ gladiator_t *gladiator_deserialize(cell_t *c)
 			&g->energy,
 			&mutations, &total_mutations,
 			&cb);
-	if(r < 0) {
+	if (r < 0) {
 		warning("gladiator deserialization failed");
 		return NULL;
 	}
 	brain_t *b = brain_deserialize(cb);
-	if(!b) {
+	if (!b) {
 		gladiator_delete(g);
 		return NULL;
 	}
 	g->brain = b;
 	return g;
 }
-
 

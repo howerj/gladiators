@@ -45,7 +45,6 @@ void random_seed(double seed);
 double random_float(void);
 uint64_t random_u64(void);
 
-
 double wrap_or_limit_x(double x);
 double wrap_or_limit_y(double y);
 double wrap_rad(double rad);

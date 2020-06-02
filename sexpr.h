@@ -50,10 +50,6 @@ typedef struct cell_t {
 #define CDAR(CELL) (cdr(car(CELL)))
 #define CDDR(CELL) (cdr(cdr(CELL)))
 
-/**@note to fully complete the functionality here, functions for dealing with
- * schemas should be created, for validating against them, and variadic
- * functions for loading and saving data*/
-
 cell_type_e type(cell_t *cell);
 cell_t *car(cell_t *cons);
 cell_t *cdr(cell_t *cons);

@@ -16,8 +16,7 @@ typedef struct prng_t {
 	uint64_t seed;
 } prng_t;
 
-void fatal(char *fmt, ...)
-{
+void fatal(char *fmt, ...) {
 	va_list args;
 	assert(fmt);
 	va_start(args, fmt);
@@ -27,17 +26,15 @@ void fatal(char *fmt, ...)
 	abort();
 }
 
-void *allocate(size_t sz)
-{
+void *allocate(size_t sz) {
 	assert(sz);
 	void *r = calloc(sz, 1);
-	if(!r)
+	if (!r)
 		fatal("allocation failed of size %zu\n", sz);
 	return r;
 }
 
-char *duplicate(const char *s)
-{
+char *duplicate(const char *s) {
 	assert(s);
 	size_t length = strlen(s) + 1;
 	char *r = allocate(length);
@@ -45,18 +42,15 @@ char *duplicate(const char *s)
 	return r;
 }
 
-double rad2deg(double rad)
-{
+double rad2deg(double rad) {
 	return (rad / (2.0 * PI)) * 360.0;
 }
 
-double deg2rad(double deg)
-{
+double deg2rad(double deg) {
 	return (deg / 360.0) * 2.0 * PI;
 }
 
-static uint32_t temper(uint32_t x)
-{
+static uint32_t temper(uint32_t x) {
     x ^= x >> 11;
     x ^= x << 7 & 0x9D2C5680;
     x ^= x << 15 & 0xEFC60000;
@@ -65,100 +59,88 @@ static uint32_t temper(uint32_t x)
 }
 
 /* from: https://stackoverflow.com/questions/19083566 */
-static uint32_t lcg64_temper(uint64_t *seed)
-{
+static uint32_t lcg64_temper(uint64_t *seed) {
 	assert(seed);
 	*seed = 6364136223846793005ULL * *seed + 1;
 	return temper(*seed >> 32);
 }
 
-static uint32_t prng(prng_t *state)
-{
+static uint32_t prng(prng_t *state) {
 	assert(state);
 	return lcg64_temper(&state->seed);
 }
 
 static prng_t rstate;
 
-uint64_t random_u64(void)
-{
+uint64_t random_u64(void) {
 	return (((uint64_t)prng(&rstate)) << 32u) | ((uint64_t)prng(&rstate));
 }
 
-static double prngf(prng_t *state) 
-{
+static double prngf(prng_t *state) {
 	assert(state);
 	double r = prng(state);
 	r /= UINT32_MAX;
 	return r;
 }
 
-void random_seed(double seed)
-{
+void random_seed(double seed) {
 	rstate.seed = seed;
 }
 
-double random_float(void)
-{
+double random_float(void) {
 	static bool set = false;
-	if(!set) {
+	if (!set) {
 		rstate.seed = (rstate.seed != 0.0) ? rstate.seed : (uint64_t)time(NULL);
 		set = true;
 	}
   	return prngf(&rstate);
 }
 
-double wrap_rad(double rad)
-{ /* https://stackoverflow.com/questions/11980292/how-to-wrap-around-a-range */
+/* https://stackoverflow.com/questions/11980292/how-to-wrap-around-a-range */
+double wrap_rad(double rad) {
 	rad = fmod(rad, 2.0 * PI);
 	if (rad < 0.0)
 		rad += 2.0 * PI;
 	return rad;
 }
 
-bool timer_tick(timer_tick_t *t)
-{
+bool timer_tick(timer_tick_t *t) {
 	assert(t);
-	if(t->i > t->max)
+	if (t->i > t->max)
 		return true;
 	t->i++;
 	return false;
 }
 
-void timer_untick(timer_tick_t *t)
-{
+void timer_untick(timer_tick_t *t) {
 	assert(t);
-	if(t->i > 0)
+	if (t->i > 0)
 		t->i--;
 }
 
-bool timer_result(timer_tick_t *t)
-{
+bool timer_result(timer_tick_t *t) {
 	assert(t);
 	return t->i > t->max;
 }
 
-polar_t cartesian_to_polar(const cartesian_t c)
-{
+polar_t cartesian_to_polar(const cartesian_t c) {
 	polar_t p;
 	p.rho = hypot(c.x, c.y);
 	p.theta = atan2(c.y, c.x);
 	return p;
 }
 
-cartesian_t polar_to_cartesian(const polar_t p)
-{
+cartesian_t polar_to_cartesian(const polar_t p) {
 	cartesian_t c;
 	c.x = cos(p.theta) * p.rho;
 	c.y = sin(p.theta) * p.rho;
 	return c;
 }
 
-unsigned binary_logarithm_base_2(unsigned x)
-{
+unsigned binary_logarithm_base_2(unsigned x) {
 	unsigned b = 0;
 	assert(x);
-	while(x >>= 1)
+	while (x >>= 1)
 		b++;
 	return b;
 }

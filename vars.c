@@ -39,77 +39,67 @@ static const bool logging_prepend_level = true;
 #define MESSAGE(PREPEND, FMT, LEVEL)\
 	do {\
 		assert(FMT);\
-		if(!verbose(LEVEL))\
+		if (!verbose(LEVEL))\
 			return;\
-		if(logging_prepend_level)\
+		if (logging_prepend_level)\
 			fputs((PREPEND), stderr);\
 		va_list args;\
 		va_start(args, FMT);\
 		vfprintf(stderr, (FMT), args);\
 		va_end(args);\
 		fputc('\n', stderr);\
-	} while(0);
+	} while (0);
 
-void error(const char *fmt, ...)
-{
+void error(const char *fmt, ...) {
 	assert(fmt);
-	if(!verbose(ERROR))
+	if (!verbose(ERROR))
 		exit(EXIT_FAILURE);
 	MESSAGE("error: ", fmt, ERROR);
 	exit(EXIT_FAILURE);
 }
 
-void warning(const char *fmt, ...)
-{
+void warning(const char *fmt, ...) {
 	MESSAGE("warning: ", fmt, WARNING);
 }
 
-void note(const char *fmt, ...)
-{
+void note(const char *fmt, ...) {
 	MESSAGE("note: ", fmt, NOTE);
 }
 
-void debug(const char *fmt, ...)
-{
+void debug(const char *fmt, ...) {
 	MESSAGE("debug: ", fmt, DEBUG);
 }
 
-bool verbose(verbosity_t v)
-{
+bool verbose(verbosity_t v) {
 	return program_log_level >= v;
 }
 
-static bool is_bool_valid(struct config_db *db)
-{
+static bool is_bool_valid(struct config_db *db) {
 	bool b = *(bool*)(db->addr);
 	return !((int)b > 1 || (!(db->zero_allowed) && !b));
 }
 
-static bool is_double_valid(struct config_db *db)
-{
-	double d = *(double*)(db->addr); 
+static bool is_double_valid(struct config_db *db) {
+	double d = *(double*)(db->addr);
 	return !(isnan(d) || isinf(d) || (!(db->zero_allowed) && !d));
 }
 
-static bool is_int_valid(struct config_db *db)
-{
+static bool is_int_valid(struct config_db *db) {
 	int i = *(int*)(db->addr);
 	return !(!(db->zero_allowed) && !i);
 }
 
-static bool is_unsigned_valid(struct config_db *db)
-{
+static bool is_unsigned_valid(struct config_db *db) {
 	unsigned u = *(unsigned*)(db->addr);
 	return !(!(db->zero_allowed) && !u);
 }
 
-static bool validate_config(void)
-{
+static bool validate_config(void) {
 	bool config_is_valid = true;
-	for(int i = 0; db[i].type != end_e; i++) {
+	for (int i = 0; db[i].type != end_e; i++) {
 		assert(db[i].addr);
 		bool valid = true;
-		switch(db[i].type) {
+		switch (db[i].type) {
 		case double_e:   valid = is_double_valid(&db[i]);   break;
 		case bool_e:     valid = is_bool_valid(&db[i]);     break;
 		case int_e:      valid = is_int_valid(&db[i]);      break;
@@ -117,7 +107,7 @@ static bool validate_config(void)
 		case end_e:                                         break;
 		default:         error("invalid configuration item type '%d'", db[i].type);
 		}
-		if(!valid) {
+		if (!valid) {
 			warning("invalid configuration value item '%s'", db[i].name);
 			config_is_valid = false;
 		}
@@ -125,33 +115,31 @@ static bool validate_config(void)
 	return config_is_valid;
 }
 
-static size_t find_config_item(const char* item)
-{
+static size_t find_config_item(const char* item) {
 	size_t i;
-	for(i = 0; db[i].type != end_e; i++)
-		if(!strcmp(db[i].name, item))
+	for (i = 0; db[i].type != end_e; i++)
+		if (!strcmp(db[i].name, item))
 			break;
 	return i;
 }
 
-void load_config(void)
-{
+void load_config(void) {
 	FILE *in = fopen(default_config_file, "rb");
 	char item[512] = { 0 };
-	if(!in) {
+	if (!in) {
 	static const char *msg = "configuration file '%s' failed to load: using default values\nuse '-s' to generate it.";
 		debug(msg, default_config_file);
 		return;
 	}
 
-	while(fscanf(in, "%511s", item) > 0) {
+	while (fscanf(in, "%511s", item) > 0) {
 		size_t i = find_config_item(item);
-		if(db[i].type == end_e)
+		if (db[i].type == end_e)
 			error("unknown configuration item '%s'", item);
 		assert(db[i].addr);
 		unsigned b = 0;
 		int r = 0;
-		switch(db[i].type) {
+		switch (db[i].type) {
 		case double_e:   r = fscanf(in, "%lf\n", (double*)db[i].addr);          break;
 		case bool_e:     r = fscanf(in, "%u\n",  &b); *((bool*)db[i].addr) = b; break;
 		case int_e:      r = fscanf(in, "%d\n",  (int*)db[i].addr);             break;
@@ -159,19 +147,18 @@ void load_config(void)
 		case end_e:      break;
 		default:         error("invalid configuration item type '%d'", db[i].type);
 		}
-		if(r != 1)
+		if (r != 1)
 			error("could not scan input token of type '%u'", (unsigned)(db[i].type));
 		memset(item, 0, sizeof(item));
 	}
-	if(!validate_config())
+	if (!validate_config())
 		error("invalid configuration file: to regenerate a valid configuration use '-s'");
 	fclose(in);
 }
 
-bool save_config_to_default_config_file(void)
-{
+bool save_config_to_default_config_file(void) {
 	FILE *out = fopen(default_config_file, "wb");
-	if(!out) {
+	if (!out) {
 		debug("failed to save configuration file '%s'", default_config_file);
 		return false;
 	}
@@ -180,13 +167,12 @@ bool save_config_to_default_config_file(void)
 	return r;
 }
 
-bool save_config(FILE *out)
-{
+bool save_config(FILE *out) {
 	assert(out);
-	for(size_t i = 0; db[i].type != end_e; i++) {
+	for (size_t i = 0; db[i].type != end_e; i++) {
 		int r = 0;
 		assert(db[i].addr);
-		switch(db[i].type) {
+		switch (db[i].type) {
 		case double_e:   r = fprintf(out, "%s %f\n", db[i].name, *(double*)db[i].addr);   break;
 		case bool_e:     r = fprintf(out, "%s %u\n", db[i].name, *(bool*)db[i].addr);     break;
 		case int_e:      r = fprintf(out, "%s %d\n", db[i].name, *(int*)db[i].addr);      break;
@@ -195,7 +181,7 @@ bool save_config(FILE *out)
 		default:
 			error("invalid configuration item type '%d'", db[i].type);
 		}
-		if(r < 0) {
+		if (r < 0) {
 			warning("configuration saving failed: %d\n", r);
 			return false;
 		}

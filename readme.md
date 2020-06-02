@@ -592,6 +592,12 @@ one can last the longest.
 
 ### To Do
 
+* The physics engine is a big dodgy and could use work
+* Some of the configuration options provide quite nice little gladiators that
+sort of follow each other around and fire, it would be good to provide
+examples.
+* Some of the inputs are discontinuous and are thus probably not very useful,
+this could be changed.
 * Work on S-Expression library so state can be saved and loaded in again, this
 should be turned into a standalone library.
 * Work on adding a player: They should only be able to see what a gladiator

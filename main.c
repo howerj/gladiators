@@ -3,19 +3,14 @@
  *  @author     Richard Howe (2016)
  *  @license    MIT <https://opensource.org/licenses/MIT>
  *  @email      howe.r.j.89@gmail.com
- *  @todo more debugging information should be acquired (inputs, outputs, brain
- *  simulator - eg. what happens if I set these inputs, etc.)
  *  @todo allow multiple projectiles to be fired and in play at any one time
- *  @todo more player colors
  *  @todo Wrap up the configuration options in a configuration structure
  *  @todo add a player object, and player led selection, and a networked
  *  version. It would be interesting to make it so the player has the same kind
  *  of inputs and field of view as the gladiators, so they do not have the
  *  advantage of being able to see the full screen.
  *  @warning all code assumes Xmin and Ymin are zero and Ymax and Xmax are
- *  equal...
- *
- *  @todo comment files*/
+ *  equal...*/
 
 #include "util.h"
 #include "gladiator.h"
@@ -34,6 +29,9 @@
 #include <math.h>
 #include <string.h>
 #include <GL/glut.h>
+#include <limits.h>
+
+#define PLAYER_TEAM (UINT_MAX)
 
 typedef struct {
 	gladiator_t **gs;
@@ -55,8 +53,6 @@ typedef struct {
 	bool player_forward;
 	bool player_left;
 	bool player_right;
-	/**@todo allow this to be saved and loaded from disk, along with the
-	 * configuration */
 } world_t;
 
 world_t *world;
@@ -309,13 +305,15 @@ static bool detect_projectile_collision(world_t *w, gladiator_t *g, bool hits[])
 		projectile_t *p = w->ps[i];
 		if((p->team == g->team) || !projectile_is_active(p))
 			continue;
-		bool hit = detect_circle_circle_collision(
-				g->x, g->y, g->radius,
-				p->x, p->y, p->radius);
+		const bool hit = detect_circle_circle_collision(g->x, g->y, g->radius, p->x, p->y, p->radius);
 		if(hit) {
 			hits[i] = true;
 			g->health -= projectile_damage;
-			w->population[projectile_team(p)]->hits++;
+			const unsigned pteam = projectile_team(p);
+			if (pteam == PLAYER_TEAM)
+				w->player->hits++;
+			else
+				w->population[projectile_team(p)]->hits++;
 			projectile_deactivate(w->ps[i]);
 			return true;
 		}
@@ -474,19 +472,6 @@ static void update_gladiator_inputs(world_t *w, gladiator_t *g, projectile_t *p,
 	}
 }
 
-static void update_gladiator_outputs(gladiator_t *g, projectile_t *p, double outputs[])
-{
-	/*most outputs are handled in "gladiator_update()"*/
-	bool fire = outputs[GLADIATOR_OUT_FIRE] > gladiator_fire_threshold;
-	if(fire && g->energy >= projectile_energy_cost && p) {
-		g->energy -= projectile_energy_cost;
-		if(!(g->refire_timeout)) {
-			projectile_fire(p, g->team, g->x, g->y, g->orientation, &g->color);
-			g->refire_timeout = gladiator_fire_timeout;
-		}
-	}
-}
-
 static projectile_t *find_free_projectile(projectile_t **ps, size_t count)
 {
 	for(size_t i = 0; i < count; i++)
@@ -495,16 +480,47 @@ static projectile_t *find_free_projectile(projectile_t **ps, size_t count)
 	return NULL;
 }
 
+static void update_gladiator_outputs(gladiator_t *g, world_t *w, double outputs[])
+{
+	/*most outputs are handled in "gladiator_update()"*/
+	bool fire = outputs[GLADIATOR_OUT_FIRE] > gladiator_fire_threshold;
+	if(fire && g->energy >= projectile_energy_cost) {
+		projectile_t *p = find_free_projectile(w->ps, w->projectile_count);
+		if (!p)
+			return;
+		if(!(g->refire_timeout)) {
+			g->energy -= projectile_energy_cost;
+			projectile_fire(p, g->team, g->x, g->y, g->orientation, &g->color);
+			g->refire_timeout = gladiator_fire_timeout;
+		}
+	}
+}
+
+static void player_fire(player_t *pl, world_t *w, bool fire) {
+	if(fire && pl->energy >= projectile_energy_cost) {
+		projectile_t *p = find_free_projectile(w->ps, w->projectile_count);
+		if (!p)
+			return;
+		if(!(pl->refire_timeout)) {
+			pl->energy -= projectile_energy_cost;
+			projectile_fire(p, pl->team, pl->x, pl->y, pl->orientation, RED);
+			pl->refire_timeout = player_refire_timeout;
+		}
+	}
+}
+
 static void update_scene(world_t *w)
 {
-	double inputs[GLADIATOR_IN_LAST_INPUT];
-	double outputs[GLADIATOR_OUT_LAST_OUTPUT];
+	double inputs[GLADIATOR_IN_LAST_INPUT] = { 0 };
+	double outputs[GLADIATOR_OUT_LAST_OUTPUT] = { 0 };
 	bool hits[w->projectile_count];
 	w->alive = 0;
-	memset(hits, 0, sizeof(hits[0]) * w->projectile_count);
 
-	player_update(w->player, w->player_fire, w->player_left, w->player_right, w->player_forward);
-	w->player_fire    = false;
+	if (player_active) {
+		player_update(w->player, w->player_fire, w->player_left, w->player_right, w->player_forward);
+		player_fire(w->player, w, w->player_fire);
+		w->player_fire = false;
+	}
 
 	for(unsigned i = 0; i < w->gladiator_count; i++)
 		if(!gladiator_is_dead(w->gs[i]))
@@ -520,13 +536,9 @@ static void update_scene(world_t *w)
 		if(gladiator_is_dead(g))
 			continue;
 		g->time_alive = tick;
-
-		memset(inputs,  0, sizeof(inputs));
-		memset(outputs, 0, sizeof(outputs));
-
 		update_gladiator_inputs(w, g, p, inputs, hit);
 		gladiator_update(g, inputs, outputs);
-		update_gladiator_outputs(g, find_free_projectile(w->ps, w->projectile_count), outputs);
+		update_gladiator_outputs(g, w, outputs);
 	}
 	for(unsigned i = 0; i < w->projectile_count; i++)
 		projectile_update(w->ps[i]);
@@ -563,10 +575,17 @@ static void draw_debug_info(world_t *w)
 		fill_textbox(&t, print_gladiator_state1,          "state1      %f", g->state1);
 	}
 
+	if(player_active) {
+		player_t *p = w->player;
+		t.color_text = *WHITE;
+		fill_textbox(&t, true, "player");
+		//fill_textbox(&t, true, "x/y/angle %f/%f/%f", p->x, p->y, p->orientation);
+		fill_textbox(&t, true, "energy %f", p->energy);
+		fill_textbox(&t, true, "health %f", p->health);
+	}
+
 	draw_textbox(&t);
 }
-
-/**@todo add in a shuffle function for mixing populations */
 
 static int fitness_compare_function(const void *a, const void *b)
 {
@@ -831,7 +850,6 @@ static gladiator_t **gladiators_new(size_t count)
 	return gs;
 }
 
-
 static projectile_t **projectiles_new(size_t count)
 {
 	projectile_t **ps = allocate(sizeof(ps[0]) * count);
@@ -867,7 +885,7 @@ static world_t *initialize_arena(size_t gladiator_count, size_t rounds, size_t p
 	w->generation = 0;;
 	w->ps = projectiles_new(projectile_count);
 	w->fs = foods_new(food_count);
-	w->player = player_new(0);
+	w->player = player_new(UINT_MAX);
 	w->player->x = Xmax / 2.0;
 	w->player->y = Ymax / 2.0;
 	return w;
@@ -923,6 +941,14 @@ static void headless_loop(world_t *w, FILE *out, unsigned count, bool forever)
 		}
 		update_scene(w);
 	}
+}
+
+void validate_config(void) 
+{
+	if (gladiator_brain_length <= GLADIATOR_IN_LAST_INPUT)
+		error("Too small a brain for inputs %u <= %d", gladiator_brain_length, (unsigned)GLADIATOR_IN_LAST_INPUT);
+	if (gladiator_brain_length <= GLADIATOR_OUT_LAST_OUTPUT)
+		error("Too small a brain for outputs %u <= %d", gladiator_brain_length, (unsigned)GLADIATOR_OUT_LAST_OUTPUT);
 }
 
 void usage(const char *arg_0)
@@ -989,6 +1015,8 @@ int main(int argc, char **argv)
 		}
 done:
 	load_config();
+	validate_config();
+
 	random_seed(program_random_seed);
 
 	if(run_headless)

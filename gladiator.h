@@ -42,7 +42,7 @@ typedef struct {
 	X(GLADIATOR_IN_VISION_PROJECTILE,  "detect hostile projectile")\
 	X(GLADIATOR_IN_VISION_FOOD,        "detect food")\
 	X(GLADIATOR_IN_CAN_FIRE,           "gladiator weapon ready")\
-	X(GLADIATOR_IN_HIT_GLADIATOR,      "gladiator hit enermy")\
+	X(GLADIATOR_IN_HIT_GLADIATOR,      "gladiator hit enemy")\
 	X(GLADIATOR_IN_FIELD_OF_VIEW,      "gladiator field of view angle")\
 	X(GLADIATOR_IN_COLLISION_WALL,     "wall collision")\
 	X(GLADIATOR_IN_COLLISION_ENEMY,    "hostile gladiator collision")\

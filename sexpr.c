@@ -6,9 +6,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-/**@todo clean this up and review code, schema format, mini-lisp interpreter
- * and deal with arrays. */
-
 typedef struct {
 	unsigned line_number;
 	bool string_input;
@@ -120,7 +117,7 @@ cell_t *mkint(intptr_t x)
 }
 
 cell_t *mkstr(const char *s)
-{ /**@todo binary strings */
+{
 	assert(s);
 	cell_t *d = cell_new(STRING);
 	d->p.string = duplicate(s);
@@ -128,7 +125,7 @@ cell_t *mkstr(const char *s)
 }
 
 cell_t *mksym(const char *s)
-{ /**@todo intern strings */
+{
 	assert(s);
 	cell_t *d = cell_new(SYMBOL);
 	d->p.string = duplicate(s);
@@ -435,7 +432,7 @@ static int indent(unsigned count, FILE *output)
 }
 
 static int _write_s_expression_to_file(cell_t *cell, FILE *output, unsigned depth)
-{ /**@todo basic pretty printing */
+{
 	assert(cell && output);
 	if(!cell)
 		fatal("unexpected NULL");
@@ -629,6 +626,7 @@ int _vscanner(cell_t *c, int i, const char *fmt, va_list ap)
 			case 'n':
 			{
 				if(!expect(ca, NIL))
+					return -1;
 				break;
 			}
 			case '\0':

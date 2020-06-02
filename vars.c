@@ -82,7 +82,7 @@ bool verbose(verbosity_t v)
 static bool is_bool_valid(struct config_db *db)
 {
 	bool b = *(bool*)(db->addr);
-	return !(b > 1 || (!(db->zero_allowed) && !b));
+	return !((int)b > 1 || (!(db->zero_allowed) && !b));
 }
 
 static bool is_double_valid(struct config_db *db)

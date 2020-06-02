@@ -225,7 +225,9 @@ static double calculate_response(neuron_t *n, const double in[], size_t length)
 
 static inline void update_layer(layer_t *l, const double inputs[], const size_t in_length, const size_t start)
 {
-	assert(l && inputs && in_length);
+	assert(l);
+	assert(inputs);
+	assert(in_length);
 	size_t length = MIN(l->length, in_length);
 	for(size_t i = start; i < length; i++)
 		l->outputs[i] = calculate_response(l->neurons[i], inputs, length);

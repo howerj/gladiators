@@ -19,8 +19,6 @@ typedef enum {
 	ALL_MESSAGES_ON,
 } verbosity_t;
 
-/**@note A GUI menu system could be created from this list, potentially*/
-/**@todo make the control keys configurable, such as "q" to quit */
 #define CONFIG_X_MACRO\
 	X(unsigned,  arena_food_count,                   4,       false)\
 	X(unsigned,  arena_gladiator_count,              2,       false)\
@@ -104,7 +102,7 @@ typedef enum {
 	X(bool,      input_gladiator_state1,             true,    true)\
 	X(bool,      input_gladiator_collision_enemy,    true,    true)\
 	X(bool,      input_gladiator_collision_wall,     true,    true)\
-	X(unsigned,  program_headless_loops,             200,     true)\
+	X(unsigned,  program_headless_loops,             30,      true)\
 	X(unsigned,  program_log_level,                  NOTE,    true)\
 	X(bool,      program_pause_after_new_generation, false,   true)\
 	X(double,    program_random_seed,                7.0,     true)\
@@ -123,6 +121,7 @@ typedef enum {
 	X(double,    player_size,                        3.0,     false)\
 	X(double,    player_starting_energy,             0.0,     true)\
 	X(double,    player_turn_rate_divisor,           6.0,     false)\
+	X(double,    player_refire_timeout,              0.0,     true)\
 	X(bool,      breeding_on,                        true,    true)\
 	X(double,    breeding_rate,                      0.9,     true)\
 	X(double,    breeding_crossover_rate,            0.5,     true)\

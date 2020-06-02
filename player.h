@@ -12,6 +12,7 @@ typedef struct {
 	unsigned team;
 	unsigned hits;
 	unsigned foods;
+	unsigned refire_timeout;
 	double energy;
 	double score;
 	double radius;

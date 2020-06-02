@@ -55,6 +55,10 @@ void player_update(player_t *p, bool fire, bool left, bool right, bool forward)
 	assert(p);
 	if(player_is_dead(p) || !player_active)
 		return;
+	if(p->energy < player_max_energy)
+		p->energy += player_energy_increment;
+	if(p->refire_timeout)
+		p->refire_timeout--;
 	update_orientation(p, left, right);
 	update_distance(p, forward);
 }
@@ -85,7 +89,7 @@ player_t *player_deserialize(cell_t *c)
 {
 	assert(c);
 	intptr_t team = 0, hits = 0, foods = 0;
-	player_t *p = player_new(0);
+	player_t *p = player_new(arena_gladiator_count);
 	int r = scanner(c, 
 			"player "
 			"(x %f) (y %f) (orientation %f) (health %f)"

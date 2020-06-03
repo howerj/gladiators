@@ -16,9 +16,7 @@
  * feature would networking would also be cool, but really not needed.
  * - A more object oriented view of doing things would help, with position
  * objects and intersection functions, would make adding new objects far
- * easier.
- * - The serialization/deserialization functionality is experimental, it also
- * does not contain configuration information. */
+ * easier.*/
 
 #include "util.h"
 #include "gladiator.h"
@@ -404,7 +402,7 @@ static bool detect_food_collision(world_t *w, gladiator_t *g) {
 	return false;
 }
 
-/**@warning same problems apply as to detect_projectile_collision*/
+
 static bool detect_gladiator_collision(world_t *w, gladiator_t *g) {
 	for (size_t i = 0; i < w->gladiator_count; i++) {
 		gladiator_t *enemy = w->gs[i];
@@ -422,6 +420,18 @@ static bool detect_gladiator_collision(world_t *w, gladiator_t *g) {
 	return false;
 }
 
+static double euclidean_distance(double ax, double ay, double bx, double by) {
+	const double dx = ax - bx;
+	const double dy = ay - by;
+	return hypot(dx, dy);
+}
+
+static double detection_function(double ax, double ay, double bx, double by) {
+	if (input_gladiator_proximity)
+		return 1.0 - (euclidean_distance(ax, ay, bx, by) / gladiator_vision);
+	return 1.0;
+}
+
 static double detect_gladiator(world_t *w, gladiator_t *k, bool detect_enemy_only) {
 	assert(k);
 	for (size_t i = 0; i < w->gladiator_count; i++) {
@@ -434,7 +444,7 @@ static double detect_gladiator(world_t *w, gladiator_t *k, bool detect_enemy_onl
 				k->radius * gladiator_vision,
 				c->x, c->y, c->radius);
 		if (t)
-			return 1.0;
+			return detection_function(k->x, k->y, c->x, c->y);
 	}
 	return 0.0;
 }
@@ -451,7 +461,7 @@ static double detect_enemy_projectile(world_t *w, gladiator_t *k) {
 				k->radius*gladiator_vision,
 				c->x, c->y, c->radius);
 		if (t)
-			return 1.0;
+			return detection_function(k->x, k->y, c->x, c->y);
 	}
 	return 0.0;
 }
@@ -468,7 +478,7 @@ static double detect_food(world_t *w, gladiator_t *k) {
 				k->radius*gladiator_vision,
 				f->x, f->y, f->radius);
 		if (t)
-			return 1.0;
+			return detection_function(k->x, k->y, f->x, f->y);
 	}
 	return 0.0;
 }
@@ -504,7 +514,8 @@ static void update_gladiator_inputs(world_t *w, gladiator_t *g, projectile_t *p,
 	if (input_gladiator_random)            inputs[GLADIATOR_IN_RANDOM]            = random_float();
 	if (input_gladiator_x)                 inputs[GLADIATOR_IN_X]                 = g->x / Xmax;
 	if (input_gladiator_y)                 inputs[GLADIATOR_IN_Y]                 = g->y / Ymax;
-	if (input_gladiator_orientation)       inputs[GLADIATOR_IN_ORIENTATION]       = g->orientation / (2*PI);
+	if (input_gladiator_orientation)       inputs[GLADIATOR_IN_ANGLE_SIN]         = (1.0 + sin(g->orientation)) / 2.0;
+	if (input_gladiator_orientation)       inputs[GLADIATOR_IN_ANGLE_COS]         = (1.0 + cos(g->orientation)) / 2.0;
 	if (input_gladiator_state1)            inputs[GLADIATOR_IN_STATE1]            = g->state1;
 	if (input_gladiator_collision_enemy)   inputs[GLADIATOR_IN_COLLISION_ENEMY]   = detect_gladiator_collision(w, g);
 
@@ -519,7 +530,7 @@ static void update_gladiator_inputs(world_t *w, gladiator_t *g, projectile_t *p,
 	for (size_t i = 0; i < GLADIATOR_IN_LAST_INPUT; i++) {
 		switch (brain_input_normalization_method) {
 		case NORMALIZATION_UNITY_E:         /* do nothing */ break;
-		case NORMALIZATION_SIGNED_UNITY_E:  inputs[i] = (inputs[i]*2*INPUT_MAX) - INPUT_MAX; break;
+		case NORMALIZATION_SIGNED_UNITY_E:  inputs[i] = (inputs[i] * 2.0 * INPUT_MAX) - INPUT_MAX; break;
 		case NORMALIZATION_SIGNED_BINARY_E: inputs[i] = inputs[i] ? 1.0 : -1.0; break;
 		default:
 			error("unknown normalization method: %u", brain_input_normalization_method);
@@ -971,18 +982,13 @@ static void headless_loop(world_t *w, FILE *out, unsigned count, bool forever) {
 	}
 }
 
-void validate_config(void) {
-	if (gladiator_brain_length <= GLADIATOR_IN_LAST_INPUT)
-		error("Too small a brain for inputs %u <= %d", gladiator_brain_length, (unsigned)GLADIATOR_IN_LAST_INPUT);
-	if (gladiator_brain_length <= GLADIATOR_OUT_LAST_OUTPUT)
-		error("Too small a brain for outputs %u <= %d", gladiator_brain_length, (unsigned)GLADIATOR_OUT_LAST_OUTPUT);
-}
+static int help(FILE *out, const char *arg0) {
+	assert(out);
+	assert(arg0);
 
-void usage(const char *arg_0) {
-	fprintf(stderr, "usage: %s [-v] [-h] [-]\n", arg_0);
-}
+	if (fprintf(out, "usage: %s [-v] [-h] [-]\n", arg0) < 0)
+		return -1;
 
-void help(void) {
 	static const char help[] = "\
 arena: fight and evolve a neural network controlled gladiator\n\
 \n\
@@ -1005,7 +1011,11 @@ When running in GUI mode there are a few commands that can issued:\n\
 \n\
 In headless mode any human players (if enabled) are not present.\n\
 ";
-	fputs(help, stderr);
+	if (fputs(help, out) < 0)
+		return -1;
+	if (config_help(out) < 0)
+		return -1;
+	return 0;
 }
 
 static void save(void) {
@@ -1031,22 +1041,20 @@ int main(int argc, char **argv) {
 			break;
 		case 's':
 			note("saving configuration file to '%s'", default_config_file);
-			return !save_config_to_default_config_file();
+			return config_save_to_default_config_file() < 0 ? 1 : 0;
 		case 'p':
-			return save_config(stdout);
+			return config_save(stdout) < 0 ? 1 : 0;
 		case 'H':
 			run_headless = true;
 			break;
 		case 'h':
-			usage(argv[0]);
-			help();
-			return EXIT_SUCCESS;
+			help(stdout, argv[0]);
+			return 0;
 		default:
 			error("invalid argument '%c'", argv[i][1]);
 		}
 done:
-	load_config();
-	validate_config();
+	(void)config_load();
 
 	random_seed(program_random_seed);
 

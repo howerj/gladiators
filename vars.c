@@ -15,7 +15,7 @@
 
 const char *default_config_file = "gladiator.conf";
 
-#define X(TYPE, NAME, VALUE, ZERO_ALLOWED, DESCIPTION) TYPE NAME = VALUE;
+#define X(TYPE, NAME, VALUE, MINIMUM, MAXIMUM, DESCIPTION) TYPE NAME = VALUE;
 CONFIG_X_MACRO
 #undef X
 
@@ -31,15 +31,15 @@ typedef struct {
 	type_e type; 
 	void *addr; 
 	const char *name; 
-	const bool zero_allowed;
+	double min, max;
 	const char *description;
 } config_db_t;
 
 static config_db_t db[] = {
-#define X(TYPE, NAME, VALUE, ZERO_ALLOWED, DESCIPTION) { TYPE ## _e , &NAME, #NAME, ZERO_ALLOWED, DESCIPTION },
+#define X(TYPE, NAME, VALUE, MINIMUM, MAXIMUM, DESCIPTION) { TYPE ## _e , &NAME, #NAME, MINIMUM, MAXIMUM, DESCIPTION },
 CONFIG_X_MACRO
 #undef X
-	{ end_e, NULL, NULL, false, NULL }
+	{ end_e, NULL, NULL, 0, 0, NULL }
 };
 
 static const bool logging_prepend_level = true;
@@ -82,27 +82,31 @@ bool verbose(verbosity_t v) {
 	return program_log_level >= v;
 }
 
+static bool within(double val, double min, double max) {
+	return val >= min && val <= max;
+}
+
 static bool is_bool_valid(config_db_t *db) {
 	bool b = *(bool*)(db->addr);
-	return !((int)b > 1 || (!(db->zero_allowed) && !b));
+	return (b == 1 || b == 0) && within(b, db->min, db->max);
 }
 
 static bool is_double_valid(config_db_t *db) {
 	double d = *(double*)(db->addr);
-	return !(isnan(d) || isinf(d) || (!(db->zero_allowed) && !d));
+	return !(isnan(d) || isinf(d)) && within(d, db->min, db->max);
 }
 
 static bool is_int_valid(config_db_t *db) {
 	int i = *(int*)(db->addr);
-	return !(!(db->zero_allowed) && !i);
+	return within(i, db->min, db->max);
 }
 
 static bool is_unsigned_valid(config_db_t *db) {
 	unsigned u = *(unsigned*)(db->addr);
-	return !(!(db->zero_allowed) && !u);
+	return within(u, db->min, db->max);
 }
 
-static bool validate_config(void) {
+static bool config_validate(void) {
 	bool config_is_valid = true;
 	for (int i = 0; db[i].type != end_e; i++) {
 		assert(db[i].addr);
@@ -131,13 +135,13 @@ static size_t find_config_item(const char* item) {
 	return i;
 }
 
-void load_config(void) {
-	FILE *in = fopen(default_config_file, "rb");
+int config_load(void) {
 	char item[512] = { 0 };
+	FILE *in = fopen(default_config_file, "rb");
 	if (!in) {
-	static const char *msg = "configuration file '%s' failed to load: using default values\nuse '-s' to generate it.";
+		static const char *msg = "configuration file '%s' failed to load: using default values\nuse '-s' to generate it.";
 		debug(msg, default_config_file);
-		return;
+		return -1;
 	}
 
 	while (fscanf(in, "%511s", item) > 0) {
@@ -159,23 +163,26 @@ void load_config(void) {
 			error("could not scan input token of type '%u'", (unsigned)(db[i].type));
 		memset(item, 0, sizeof(item));
 	}
-	if (!validate_config())
+	if (!config_validate())
 		error("invalid configuration file: to regenerate a valid configuration use '-s'");
-	fclose(in);
+	if (fclose(in) < 0)
+		return -1;
+	return 0;
 }
 
-bool save_config_to_default_config_file(void) {
+int config_save_to_default_config_file(void) {
 	FILE *out = fopen(default_config_file, "wb");
 	if (!out) {
 		debug("failed to save configuration file '%s'", default_config_file);
-		return false;
+		return -1;
 	}
-	bool r = save_config(out);
-	fclose(out);
+	const int r = config_save(out);
+	if (fclose(out) < 0)
+		return -1;
 	return r;
 }
 
-bool save_config(FILE *out) {
+int config_save(FILE *out) {
 	assert(out);
 	for (size_t i = 0; db[i].type != end_e; i++) {
 		int r = 0;
@@ -190,10 +197,35 @@ bool save_config(FILE *out) {
 		}
 		if (r < 0) {
 			warning("configuration saving failed: %d\n", r);
-			return false;
+			return -1;
 		}
 	}
-	return true;
+	return 0;
+}
+
+static const char *type_lookup(type_e type) {
+	const char *r = "unknown";
+	switch (type) {
+	case end_e:       r = "end";      break;
+	case double_e:    r = "double";   break;
+	case int_e:       r = "int";      break;
+	case unsigned_e:  r = "unsigned"; break;
+	case bool_e:      r = "boolean";  break;
+	}
+	return r;
+}
+
+int config_help(FILE *out) {
+	assert(out);
+	if (fputs("\nConfiguration Items\n", out) < 0)
+		return -1;
+	for (size_t i = 0; db[i].type != end_e; i++) {
+		const int r = fprintf(out, "* \"%s\" : type = %s, minimum value = %g, maximum value = %g\n\n%s\n\n", 
+				db[i].name, type_lookup(db[i].type), db[i].min, db[i].max, db[i].description);
+		if (r < 0)
+			return -1;
+	}
+	return 0;
 }
 
 cell_t *config_serialize(void) {

@@ -139,6 +139,9 @@ produced. Perhaps a better looking SDL version could be produced as well.
 neural network AI could go up against a manually programmed one, using
 [GPGOAL][] as the engine. (Also see
 <http://alumni.media.mit.edu/~jorkin/goap.html>)
+* A version in which the gladiators would have to learn to pick up food and
+drop it off at a place could be made as well. This would probably require two
+more inputs; food carried and drop off point in vision.
 
 [GPGOAP]: https://github.com/stolk/GPGOAP
 [A video]: https://www.youtube.com/watch?v=u2t77mQmJiY

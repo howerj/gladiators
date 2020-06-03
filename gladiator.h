@@ -49,7 +49,8 @@ typedef struct {
 	X(GLADIATOR_IN_STATE1,             "gladiator memory")\
 	X(GLADIATOR_IN_X,                  "gladiator x position")\
 	X(GLADIATOR_IN_Y,                  "gladiator y position")\
-	X(GLADIATOR_IN_ORIENTATION,        "gladiator angle")\
+	X(GLADIATOR_IN_ANGLE_SIN,          "gladiator angle: sine component")\
+	X(GLADIATOR_IN_ANGLE_COS,          "gladiator angle: cosine component")\
 	X(GLADIATOR_IN_RANDOM,             "gladiator entropy source")\
 	X(GLADIATOR_IN_LAST_INPUT,         "INVALID INPUT")
 

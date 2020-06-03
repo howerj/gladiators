@@ -104,7 +104,6 @@ static void _draw_arc(double x, double y, double angle, double magnitude, double
 				glVertex3d(cos(i) * magnitude, sin(i) * magnitude, 0.0);
 		glEnd();
 	glPopMatrix();
-
 }
 
 void draw_arc_filled(double x, double y, double angle, double magnitude, double arc, const color_t *color) {

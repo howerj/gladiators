@@ -3,14 +3,22 @@
  *  @author     Richard Howe (2016)
  *  @license    MIT <https://opensource.org/licenses/MIT>
  *  @email      howe.r.j.89@gmail.com
- *  @todo allow multiple projectiles to be fired and in play at any one time
- *  @todo Wrap up the configuration options in a configuration structure
- *  @todo add a player object, and player led selection, and a networked
- *  version. It would be interesting to make it so the player has the same kind
- *  of inputs and field of view as the gladiators, so they do not have the
- *  advantage of being able to see the full screen.
- *  @warning all code assumes Xmin and Ymin are zero and Ymax and Xmax are
- *  equal...*/
+ * 
+ * NOTES:
+ *
+ * - All code assumes Xmin and Ymin are zero and Ymax and Xmax are equal.
+ * - The GUI code should be exercised entirely from this module and contained
+ * solely in 'gui.c', which would make porting this code to a different
+ * platform a lot easier, and making a completely headless version possible.
+ * - It would be interesting if we could give the player the same view that the
+ * gladiator has, as the player has a massive advantage in that they have a top
+ * down view of the arena whilst the gladiators do not. A multiple player
+ * feature would networking would also be cool, but really not needed.
+ * - A more object oriented view of doing things would help, with position
+ * objects and intersection functions, would make adding new objects far
+ * easier.
+ * - The serialization/deserialization functionality is experimental, it also
+ * does not contain configuration information. */
 
 #include "util.h"
 #include "gladiator.h"
@@ -31,6 +39,7 @@
 #include <GL/glut.h>
 #include <limits.h>
 
+#define WORLD_FILE  ("gladiator.lsp")
 #define PLAYER_TEAM (UINT_MAX)
 
 typedef struct {
@@ -53,22 +62,20 @@ typedef struct {
 	bool player_forward;
 	bool player_left;
 	bool player_right;
+
+	unsigned tick;
+	bool step, skip;
 } world_t;
 
 world_t *world;
 
-static unsigned tick = 0;
-static bool step = false, skip = false;
-
-/**@warning world_serialize and world_deserialize are for testing purposes only,
- * they do not fully work, nor do they cover things such as the configuration
- * file */
-cell_t *world_serialize(world_t *w) {
+static cell_t *world_serialize(world_t *w) {
 	assert(w);
+	cell_t *configuration = config_serialize();
 	cell_t *gladiators = cons(mksym("gladiators"), nil());
 	cell_t *op   = gladiators;
-	for (size_t i = 0; i < w->gladiator_count; op = cdr(op), i++)
-		setcdr(op, cons(gladiator_serialize(w->gs[i]), nil()));
+	for (size_t i = 0; i < w->gladiator_count * (1 << w->gladiator_rounds); op = cdr(op), i++)
+		setcdr(op, cons(gladiator_serialize(w->population[i]), nil()));
 	cell_t *projectiles = cons(mksym("projectiles"), nil());
 	op = projectiles;
 	for (size_t i = 0; i < w->projectile_count; op = cdr(op), i++)
@@ -78,46 +85,61 @@ cell_t *world_serialize(world_t *w) {
 	for (size_t i = 0; i < w->food_count; op = cdr(op), i++)
 		setcdr(op, cons(food_serialize(w->fs[i]), nil()));
 	cell_t *c = printer(
-			"world %x %x %x %x"
+			"world %x %x %x %x %x"
 			"(gladiator-count %d) "
 			"(gladiator-rounds %d) "
 			"(projectile-count %d) "
 			"(food-count %d) "
 			"(generation %d) "
-			"(alive %d) ",
-			gladiators, projectiles, foods, player_serialize(w->player),
+			"(alive %d) "
+			"(tick %d) "
+			"(round %d) "
+			"(match %d) "
+			,
+			configuration, gladiators, projectiles, foods, player_serialize(w->player),
 			(intptr_t)(w->gladiator_count),
 			(intptr_t)(w->gladiator_rounds),
 			(intptr_t)(w->projectile_count),
 			(intptr_t)(w->food_count),
 			(intptr_t)(w->generation),
-			(intptr_t)(w->alive));
+			(intptr_t)(w->alive),
+			(intptr_t)(w->tick),
+			(intptr_t)(w->round),
+			(intptr_t)(w->match)
+			);
 	return c;
 }
 
-world_t *world_deserialize(cell_t *c) {
+static world_t *world_deserialize(cell_t *c) {
 	assert(c);
 	world_t *w = allocate(sizeof(*w));
-	cell_t *gs = NULL,  *ps = NULL, *fs = NULL, *player = NULL;
-	uintptr_t gsc = 0, grnd = 0, psc = 0, fsc = 0, generation = 0, alive = 0;
+	cell_t *configuration = NULL, *gs = NULL,  *ps = NULL, *fs = NULL, *player = NULL;
+	uintptr_t gsc = 0, grnd = 0, psc = 0, fsc = 0, generation = 0, alive = 0, tick = 0, round = 0, match = 0;
 	int r = scanner(c,
-		"world %x %x %x %x"
+		"world %x %x %x %x %x"
 		"(gladiator-count %d) "
 		"(gladiator-rounds %d) "
 		"(projectile-count %d) "
 		"(food-count %d) "
 		"(generation %d) "
-		"(alive %d) ",
-		&gs, &ps, &fs, &player,
+		"(alive %d) "
+		"(tick %d) "
+		"(round %d) "
+		"(match %d) "
+		,
+		&configuration, &gs, &ps, &fs, &player,
 		&gsc, &grnd, &psc, &fsc,
-		&generation, &alive);
+		&generation, &alive, &tick,
+		&round, &match);
 	if (r < 0) {
 		warning("world deserialization failed for <%p>", c);
 		return NULL;
 	}
-
+	if (config_deserialize(configuration) < 0)
+		goto fail;
+	const size_t total = gsc * (1ull << grnd);
 	if (gsc)
-		w->population = allocate(sizeof(*gs) * gsc * (1 << grnd));
+		w->population = allocate(sizeof(*gs) * total);
 	w->gs = w->population;
 	if (psc)
 		w->ps = allocate(sizeof(*ps) * psc);
@@ -125,15 +147,15 @@ world_t *world_deserialize(cell_t *c) {
 		w->fs = allocate(sizeof(*fs) * fsc);
 	if (gsc)
 		gs = cdr(gs);
-	size_t i;
-	for (i = 0 ; i < gsc && type(gs) != NIL; i++, gs = cdr(gs)) {
+	size_t i = 0;
+	for (i = 0 ; i < total && type(gs) != NIL; i++, gs = cdr(gs)) {
 		cell_type_e wt = type(car(gs));
 		if (wt != CONS || !(w->gs[i] = gladiator_deserialize(car(gs)))) {
 			warning("gladiator deserialization failed");
 			goto fail;
 		}
 	}
-	if (i != gsc)
+	if (i != total)
 		goto fail;
 	if (psc)
 		ps = cdr(ps);
@@ -161,14 +183,59 @@ world_t *world_deserialize(cell_t *c) {
 		warning("player deserialization failed");
 		goto fail;
 	}
+	w->round = round;
+	w->match = match;
+	w->gladiator_rounds = grnd;
 	w->gladiator_count = gsc;
 	w->projectile_count = psc;
 	w->food_count = fsc;
 	w->generation = generation;
 	w->alive = alive;
+	w->tick = tick;
+	w->gs = w->population + (match * gsc);
 	return w;
 fail:
 	return NULL;
+}
+
+static int world_save(world_t *w, const char *file) {
+	if (!w)
+		return 0;
+	int r = -1;
+	cell_t *c = NULL;
+	FILE *f = NULL;
+	if (!world)
+		goto fail;
+	c = world_serialize(w);
+	if (!c)
+		goto fail;
+	f = fopen(file, "wb");
+	if (!f)
+		goto fail;
+	r = write_s_expression_to_file(c, f);
+fail:
+	cell_delete(c);
+	if (f)
+		fclose(f);
+	return r;
+}
+
+static world_t *world_load(const char *file) {
+	world_t *w = NULL;
+	FILE *f = NULL;
+	cell_t *c = NULL;
+	f = fopen(file, "rb");
+	if (!f)
+		goto fail;
+	c = read_s_expression_from_file(f);
+	if (!c)
+		goto fail;
+	w = world_deserialize(c);
+fail:
+	cell_delete(c);
+	if (f)
+		fclose(f);
+	return w;
 }
 
 static double random_x(void) {
@@ -191,13 +258,13 @@ static void keyboard_handler(unsigned char key, int x, int y) {
 	switch (key) {
 	case 'p': arena_paused = true;
 		  break;
-	case 's': step = true;
+	case 's': w->step = true;
 		  arena_paused = true;
 		  break;
 	case 'r': arena_paused = false;
-		  step = false;
+		  w->step = false;
 		  break;
-	case 'n': skip = true;
+	case 'n': w->skip = true;
 		  break;
 	case ' ': w->player_fire = true;
 		  break;
@@ -280,7 +347,7 @@ static double fps(void) {
 	return fps;
 }
 
-/**@warning if the gladiators or the projectiles are too fast this scheme will
+/* If the gladiators or the projectiles are too fast this scheme will
  * work only intermittently, as the projectile warps past the gladiator. This
  * could be resolved with the line-circle detection algorithm to a certain
  * degree.
@@ -355,8 +422,7 @@ static bool detect_gladiator_collision(world_t *w, gladiator_t *g) {
 	return false;
 }
 
-static bool detect_gladiator(world_t *w, gladiator_t *k, bool detect_enemy_only)
-{
+static double detect_gladiator(world_t *w, gladiator_t *k, bool detect_enemy_only) {
 	assert(k);
 	for (size_t i = 0; i < w->gladiator_count; i++) {
 		gladiator_t *c = w->gs[i];
@@ -368,12 +434,12 @@ static bool detect_gladiator(world_t *w, gladiator_t *k, bool detect_enemy_only)
 				k->radius * gladiator_vision,
 				c->x, c->y, c->radius);
 		if (t)
-			return true;
+			return 1.0;
 	}
-	return false;
+	return 0.0;
 }
 
-static bool detect_enemy_projectile(world_t *w, gladiator_t *k) {
+static double detect_enemy_projectile(world_t *w, gladiator_t *k) {
 	assert(w && k);
 	for (unsigned j = 0; j < w->projectile_count; j++) {
 		projectile_t *c = w->ps[j];
@@ -385,12 +451,12 @@ static bool detect_enemy_projectile(world_t *w, gladiator_t *k) {
 				k->radius*gladiator_vision,
 				c->x, c->y, c->radius);
 		if (t)
-			return true;
+			return 1.0;
 	}
-	return false;
+	return 0.0;
 }
 
-static bool detect_food(world_t *w, gladiator_t *k) {
+static double detect_food(world_t *w, gladiator_t *k) {
 	assert(w && k);
 	for (unsigned j = 0; j < w->food_count; j++) {
 		food_t *f = w->fs[j];
@@ -402,9 +468,9 @@ static bool detect_food(world_t *w, gladiator_t *k) {
 				k->radius*gladiator_vision,
 				f->x, f->y, f->radius);
 		if (t)
-			return true;
+			return 1.0;
 	}
-	return false;
+	return 0.0;
 }
 
 typedef enum {
@@ -416,8 +482,19 @@ typedef enum {
 #define INPUT_MAX (1.0)
 static void update_gladiator_inputs(world_t *w, gladiator_t *g, projectile_t *p, double inputs[], bool hit) {
 	assert(w && g && p && inputs);
+	/* NOTES:
+	 * - What inputs the gladiator is able to process affects the out come
+	 *   greatly. 
+	 * - Instead of having 'can' fire just having the amount of energy the
+	 *   gladiator has
+	 * - Proximity could be provided instead of a simple on/off for
+	 *   detection of objects.
+	 * - The program on which this one is based had 'has fired as an input'
+	 * - It might be better to make the inputs continuous, for example the
+	 *   orientation could be decomposed using sine and cosine into two
+	 *   continuous inputs. */
 
-	/**@note all inputs should be scaled to be in the [0, 1] range */
+	/* all inputs should be scaled to be in the [0, 1] range */
 	if (input_gladiator_hit)               inputs[GLADIATOR_IN_HIT_GLADIATOR]     = hit;
 	if (input_gladiator_can_fire)          inputs[GLADIATOR_IN_CAN_FIRE]          = g->energy > projectile_energy_cost && !projectile_is_active(p);
 	if (input_gladiator_field_of_view)     inputs[GLADIATOR_IN_FIELD_OF_VIEW]     = g->field_of_view / gladiator_max_field_of_view;
@@ -441,14 +518,9 @@ static void update_gladiator_inputs(world_t *w, gladiator_t *g, projectile_t *p,
 
 	for (size_t i = 0; i < GLADIATOR_IN_LAST_INPUT; i++) {
 		switch (brain_input_normalization_method) {
-		case NORMALIZATION_UNITY_E: /* do nothing */
-			break;
-		case NORMALIZATION_SIGNED_UNITY_E:
-			inputs[i] = (inputs[i]*2*INPUT_MAX) - INPUT_MAX;
-			break;
-		case NORMALIZATION_SIGNED_BINARY_E:
-			inputs[i] = inputs[i] ? 1.0 : -1.0;
-			break;
+		case NORMALIZATION_UNITY_E:         /* do nothing */ break;
+		case NORMALIZATION_SIGNED_UNITY_E:  inputs[i] = (inputs[i]*2*INPUT_MAX) - INPUT_MAX; break;
+		case NORMALIZATION_SIGNED_BINARY_E: inputs[i] = inputs[i] ? 1.0 : -1.0; break;
 		default:
 			error("unknown normalization method: %u", brain_input_normalization_method);
 		}
@@ -494,6 +566,7 @@ static void update_scene(world_t *w) {
 	double inputs[GLADIATOR_IN_LAST_INPUT] = { 0 };
 	double outputs[GLADIATOR_OUT_LAST_OUTPUT] = { 0 };
 	bool hits[w->projectile_count];
+	memset(hits, 0, w->projectile_count * sizeof (bool));
 	w->alive = 0;
 
 	if (player_active) {
@@ -515,7 +588,7 @@ static void update_scene(world_t *w) {
 		unsigned hit = hits[i];
 		if (gladiator_is_dead(g))
 			continue;
-		g->time_alive = tick;
+		g->time_alive = w->tick;
 		update_gladiator_inputs(w, g, p, inputs, hit);
 		gladiator_update(g, inputs, outputs);
 		update_gladiator_outputs(g, w, outputs);
@@ -532,7 +605,7 @@ static void draw_debug_info(world_t *w) {
 	textbox_t t = { .x = Xmin + Xmax/40, .y = Ymax - Ymax/40, .draw_box = false, .color_text = *WHITE };
 
 	fill_textbox(&t, print_generation,        "generation: %u", w->generation);
-	fill_textbox(&t, print_arena_tick,        "tick:       %u", tick);
+	fill_textbox(&t, print_arena_tick,        "tick:       %u", w->tick);
 	fill_textbox(&t, print_fps,               "fps:        %f", fps());
 	fill_textbox(&t, print_gladiators_alive,  "alive:      %u/%u", w->alive, w->gladiator_count);
 	fill_textbox(&t, print_round,             "round:      %u", w->round);
@@ -700,7 +773,6 @@ static gladiator_t **roulette_wheel_selection(gladiator_t **gs, size_t count) {
 }
 
 static void reinitialize_foods(food_t **fs, size_t count) {
-	assert(fs);
 	for (size_t i = 0; i < count; i++) { /*randomize food positions*/
 		fs[i]->x = random_x();
 		fs[i]->y = random_y();
@@ -713,7 +785,6 @@ static void reinitialize_player(player_t *p) {
 	p->y = Ymax / 2.0;
 }
 
-
 static void gladiators_delete(gladiator_t **gs, size_t count) {
 	assert(gs);
 	for (size_t i = 0; i < count; i++) {
@@ -723,8 +794,9 @@ static void gladiators_delete(gladiator_t **gs, size_t count) {
 	free(gs);
 }
 
-static void new_generation(FILE *out, world_t *w) {
+static void new_generation(world_t *w, FILE *out) {
 	assert(w);
+	assert(out);
 	size_t all = w->gladiator_count * (1uLL << w->gladiator_rounds);
 	for (size_t i = 0; i < w->projectile_count; i++) /*disable all projectiles*/
 		projectile_deactivate(w->ps[i]);
@@ -781,15 +853,15 @@ static void draw_scene(void) {
 
 	player_draw(w->player);
 
-	if (next != tick && (!arena_paused || step)) {
-		if (tick > max_ticks_per_generation || w->alive <= 1 || skip) {
-			new_generation(stderr, w);
-			tick = 0;
+	if (next != w->tick && (!arena_paused || w->step)) {
+		if (w->tick > max_ticks_per_generation || w->alive <= 1 || w->skip) {
+			new_generation(w, stderr);
+			w->tick = 0;
 			arena_paused = program_pause_after_new_generation;
-			skip = false;
+			w->skip = false;
 		}
-		step = false;
-		next = tick;
+		w->step = false;
+		next = w->tick;
 		update_scene(w);
 	}
 
@@ -838,7 +910,6 @@ static world_t *initialize_arena(size_t gladiator_count, size_t rounds, size_t p
 	w->population = gladiators_new(gladiator_count*(1 << rounds));
 	w->gs = w->population;
 	w->match = 0;
-	w->round = rounds;
 	w->generation = 0;;
 	w->ps = projectiles_new(projectile_count);
 	w->fs = foods_new(food_count);
@@ -849,19 +920,22 @@ static world_t *initialize_arena(size_t gladiator_count, size_t rounds, size_t p
 }
 
 static void timer_callback(int value) {
-	if (!arena_paused || step)
-		tick++;
+	if (!arena_paused || world->step)
+		world->tick++;
 	glutTimerFunc(arena_tick_ms, timer_callback, value);
 }
 
-static void initialize_rendering(char *arg_0) {
+/* This, along with all the other callbacks, should be moved to 'gui.c', glut
+ * does not make it easy however... */
+static void initialize_rendering(char *arg_0, const char *name, void *param) {
+	UNUSED(param);
 	char *glut_argv[] = { arg_0, NULL };
 	int glut_argc = 0;
 	glutInit(&glut_argc, glut_argv);
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH );
 	glutInitWindowPosition(window_x_starting_position, window_y_starting_position);
 	glutInitWindowSize(window_width, window_height);
-	glutCreateWindow("Gladiators");
+	glutCreateWindow(name);
 	glShadeModel(GL_FLAT);
 	glEnable(GL_DEPTH_TEST);
 	glutKeyboardFunc(keyboard_handler);
@@ -873,8 +947,8 @@ static void initialize_rendering(char *arg_0) {
 }
 
 static void headless_loop(world_t *w, FILE *out, unsigned count, bool forever) {
-	for (tick = 0; w->generation < count || forever; tick++) {
-		if (tick > max_ticks_per_generation || w->alive <= 1) {
+	for (w->tick = 0; w->generation < count || forever; w->tick++) {
+		if (w->tick > max_ticks_per_generation || w->alive <= 1) {
 			update_fitness(w->gs, w->gladiator_count);
 
 			if (verbose(NOTE)) {
@@ -883,15 +957,15 @@ static void headless_loop(world_t *w, FILE *out, unsigned count, bool forever) {
 				print_fitness(out, w->gs, w->gladiator_count);
 			}
 
-			new_generation(out, w);
+			new_generation(w, out);
 
 			if (verbose(NOTE)) {
 				fprintf(out, "            ");
 				print_fitness(out, w->gs, w->gladiator_count);
-				fprintf(out, "tick: %u\n", tick);
+				fprintf(out, "tick: %u\n", w->tick);
 			}
 
-			tick = 0;
+			w->tick = 0;
 		}
 		update_scene(w);
 	}
@@ -934,11 +1008,19 @@ In headless mode any human players (if enabled) are not present.\n\
 	fputs(help, stderr);
 }
 
+static void save(void) {
+	if (world_save_at_exit)
+		world_save(world, WORLD_FILE);
+}
+
 int main(int argc, char **argv) {
 	bool log_level_set = false;
 	int log_level = program_log_level;
 	bool run_headless = false;
 	int i = 0;
+	if (atexit(save) < 0)
+		error("failed to register with atexit");
+
 	for (i = 1; i < argc && argv[i][0] == '-'; i++)
 		switch (argv[i][1]) {
 		case '\0': /* stop argument processing */
@@ -973,7 +1055,17 @@ done:
 	if (log_level_set)
 		program_log_level = log_level;
 
-	world = initialize_arena(arena_gladiator_count, arena_gladiator_rounds, arena_projectile_count, arena_food_count);
+	if (world_load_at_start) {
+		world = world_load(WORLD_FILE);
+		if (world)
+			note("loaded world from %s", WORLD_FILE);
+		else
+			warning("failed to load world from %s", WORLD_FILE);
+	}
+	if (!world)
+		world = initialize_arena(arena_gladiator_count, arena_gladiator_rounds, arena_projectile_count, arena_food_count);
+	if (!world)
+		error("World initialization failed");
 
 	if (program_run_headless) {
 		headless_loop(world, stdout, program_headless_loops, program_headless_loops == 0);
@@ -984,7 +1076,7 @@ done:
 		return 0;
 	} else {
 gui:
-		initialize_rendering(argv[0]);
+		initialize_rendering(argv[0], "Gladiators", world);
 		glutMainLoop();
 	}
 	return 0;

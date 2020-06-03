@@ -129,12 +129,11 @@ cell_t *cons(cell_t *car, cell_t *cdr) {
 
 cell_t *mklist(cell_t *l, ...) {
 	assert(l);
-	size_t i;
 	cell_t *head, *op, *next;
 	va_list ap;
 	head = op = cons(l, nil());
 	va_start(ap, l);
-	for (i = 1; (next = va_arg(ap, cell_t *)); op = cdr(op), i++)
+	for (size_t i = 1; (next = va_arg(ap, cell_t *)); op = cdr(op), i++)
 		setcdr(op, cons(next, nil()));
 	va_end(ap);
 	return head;
@@ -146,6 +145,8 @@ cell_t *nil(void) {
 }
 
 bool cell_eq(cell_t *a, cell_t *b) {
+	assert(a);
+	assert(b);
 	cell_type_e at = type(a);
 	if (at != type(b))
 		return false;
@@ -177,6 +178,7 @@ size_t cell_length(cell_t *c) {
 }
 
 cell_t *nth(cell_t *c, size_t n) {
+	assert(c);
 	assert((type(c) == NIL) || type(c) == CONS);
 	for (size_t i = 0; i < n && c->type != NIL; i++, c = cdr(c))
 		/*do nothing*/;
@@ -252,8 +254,7 @@ fail:
 	return NULL;
 }
 
-static cell_t *parse_symbol_or_number(lexer_t *l)
-{
+static cell_t *parse_symbol_or_number(lexer_t *l) {
 	assert(l);
 	char s[CELL_MAX_STRING_LENGTH] = {0};
 	cell_t *c = cell_new(SYMBOL);
@@ -292,7 +293,6 @@ static cell_t *parse_symbol_or_number(lexer_t *l)
 	fprintf(stderr, "max string length %u exceeded on line %u\n", CELL_MAX_STRING_LENGTH, l->line_number);
 	cell_delete(c);
 	return NULL;
-
 }
 
 static cell_t *read_s_expression(lexer_t *l);
@@ -409,7 +409,7 @@ static int _write_s_expression_to_file(cell_t *cell, FILE *output, unsigned dept
 		fatal("unexpected NULL");
 	switch (cell->type) {
 	case NIL:      return fprintf(output, "() ");
-	case INTEGER:  return fprintf(output, "%"PRIdPTR, cell->p.integer);
+	case INTEGER:  return fprintf(output, "%"PRIdPTR" ", cell->p.integer);
 	case FLOATING: return fprintf(output, "%.3lf ", cell->p.floating);
 	case SYMBOL:   return fprintf(output, "%s ", cell->p.string);
 	case STRING:   return print_escaped_string(cell->p.string, output);
@@ -494,11 +494,12 @@ static int _expect(cell_t *c, cell_type_e t, const char *file, const char *func,
  *  f = float
  *  d = integer
  *  s = string
- *  S = symbol
- */
-int _vscanner(cell_t *c, int i, const char *fmt, va_list ap) {
+ *  S = symbol */
+static int _vscanner(cell_t *c, int i, const char *fmt, va_list ap) {
 	char f = 0;
-	assert(c && fmt && type(c) == CONS);
+	assert(c);
+	assert(fmt);
+	assert(type(c) == CONS);
 	while ((f = fmt[i])) {
 		if (isspace(f)) {
 			i++;
@@ -637,6 +638,8 @@ int _vscanner(cell_t *c, int i, const char *fmt, va_list ap) {
 }
 
 int vscanner(cell_t *c, const char *fmt, va_list ap) {
+	assert(c);
+	assert(fmt);
 	return _vscanner(c, 0, fmt, ap);
 }
 

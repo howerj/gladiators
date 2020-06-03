@@ -30,7 +30,7 @@ typedef struct {
 	double width, height;
 } textbox_t;
 
-typedef struct { /**@note it might be worth translating some functions to use points*/
+typedef struct {
 	double x, y;
 } point_t;
 

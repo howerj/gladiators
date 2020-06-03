@@ -3,13 +3,15 @@ LDFLAGS  = -lfreeglut -lopengl32 -lm
 else # Unixen
 LDFLAGS  = -lglut -lGL -lm
 endif
-CFLAGS   = -std=c99 -Wall -Wextra -g -O3 -ffast-math
+CFLAGS   = -std=c99 -Wall -Wextra -g -O2 -ffast-math
 RM      := rm
 SOURCES := ${wildcard *.c}
 OBJECTS := ${SOURCES:%.c=%.o}
 DEPS    := ${SOURCES:%.c=%.d}
 CFLAGS  += -MMD
 TARGET  := arena
+
+.PHONY: all run clean
 
 all: ${TARGET}
 
@@ -27,12 +29,7 @@ run: ${TARGET}
 gladiator.conf: ${TARGET}
 	./${TARGET} -s
 
-doc: gladiator.htm
-
-gladiator.htm: readme.md
-	markdown $^ | tee $@
-
 -include ${DEPS}
 
 clean:
-	${RM} -f *.o *.d *.out ${TARGET} *.htm vgcore.* core
+	${RM} -f *.o *.d *.out *.lsp ${TARGET} *.htm vgcore.* core

@@ -1,4 +1,3 @@
-
 #include "player.h"
 #include "util.h"
 #include "vars.h"

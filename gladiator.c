@@ -1,7 +1,7 @@
 /** @file       gladiator.c
  *  @brief      a "gladiator" - an entity we are trying to improve using
  *              genetic algorithms
- *  @author     Richard Howe (2016)
+ *  @author     Richard James Howe (2016)
  *  @license    MIT <https://opensource.org/licenses/MIT>
  *  @email      howe.r.j.89@gmail.com*/
 
@@ -45,6 +45,7 @@ static void update_field_of_view(gladiator_t *g, double outputs[]) {
 	assert(g && outputs);
 	g->field_of_view += outputs[GLADIATOR_OUT_FIELD_OF_VIEW_OPEN] / gladiator_field_of_view_divisor;
 	g->field_of_view -= outputs[GLADIATOR_OUT_FIELD_OF_VIEW_CLOSE] / gladiator_field_of_view_divisor;
+	g->field_of_view += gladiator_field_of_view_auto_inc;
 	g->field_of_view = MIN(g->field_of_view, gladiator_max_field_of_view);
 	g->field_of_view = MAX(g->field_of_view, gladiator_min_field_of_view);
 }
@@ -118,6 +119,8 @@ void gladiator_draw(gladiator_t *g) {
 		draw_line(g->x, g->y, g->orientation - g->field_of_view/2, Ymax/5, g->radius/2, target);
 		draw_line(g->x, g->y, g->orientation + g->field_of_view/2, Ymax/5, g->radius/2, target);
 	}
+	if (draw_gladiator_short_stats)
+		draw_text(WHITE, g->x, g->y - g->radius*2, "%f/%f/%u", g->health, g->energy, g->team);
 }
 
 gladiator_t *gladiator_new(unsigned team, double x, double y, double orientation) {
@@ -182,14 +185,15 @@ double gladiator_fitness(gladiator_t *g) {
 gladiator_t *gladiator_breed(gladiator_t *a, gladiator_t *b) {
 	gladiator_t *child = gladiator_new(a->team, 0, 0, 0);
 	brain_delete(child->brain);
-	child->mutations = MAX(a->mutations, b->mutations);
+	child->mutations = MAX(a->mutations, b->mutations); /* This should be done on a per neuron basis */
 	child->fitness   = (a->fitness + b->fitness) / 2.0;
 	child->brain     = brain_crossover(a->brain, b->brain);
 	return child;
 }
 
 cell_t *gladiator_serialize(gladiator_t *g) {
-	assert(g && g->brain);
+	assert(g);
+	assert(g->brain);
 
 	cell_t *b = brain_serialize(g->brain);
 	assert(b);
@@ -201,6 +205,8 @@ cell_t *gladiator_serialize(gladiator_t *g) {
 			"(team %d) (hits %d) (foods %d) "
 			"(energy %f) "
 			"(mutations %d) (total-mutations %d) "
+			"(state1 %f) "
+			"(fitness %f) "
 			" %x ",
 			g->x, g->y, g->orientation,
 			g->field_of_view,
@@ -208,6 +214,8 @@ cell_t *gladiator_serialize(gladiator_t *g) {
 			(intptr_t)(g->team), (intptr_t)(g->hits), (intptr_t)(g->foods),
 			g->energy,
 			(intptr_t)g->mutations, (intptr_t)g->total_mutations,
+			g->state1,
+			g->fitness,
 			b);
 	assert(c);
 	return c;
@@ -229,6 +237,8 @@ gladiator_t *gladiator_deserialize(cell_t *c) {
 			"(team %d) (hits %d) (foods %d) "
 			"(energy %f) "
 			"(mutations %d) (total-mutations %d) "
+			"(state1 %f) "
+			"(fitness %f) "
 			" %x ",
 			&g->x, &g->y, &g->orientation,
 			&g->field_of_view,
@@ -236,6 +246,8 @@ gladiator_t *gladiator_deserialize(cell_t *c) {
 			&team, &hits, &foods,
 			&g->energy,
 			&mutations, &total_mutations,
+			&g->state1,
+			&g->fitness,
 			&cb);
 	if (r < 0) {
 		warning("gladiator deserialization failed");
@@ -247,6 +259,11 @@ gladiator_t *gladiator_deserialize(cell_t *c) {
 		return NULL;
 	}
 	g->brain = b;
+	g->team = team;
+	g->hits = hits;
+	g->foods = foods;
+	g->mutations = mutations;
+	g->total_mutations = total_mutations;
 	return g;
 }
 

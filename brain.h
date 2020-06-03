@@ -15,7 +15,7 @@
 struct brain_t;
 typedef struct brain_t brain_t;
 
-/** @note see https://en.wikipedia.org/wiki/Activation_function for more functions */
+/** see <https://en.wikipedia.org/wiki/Activation_function for more functions> */
 typedef enum {
 	LOGISTIC_FUNCTION_E,
 	TANH_FUNCTION_E,

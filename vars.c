@@ -15,7 +15,7 @@
 
 const char *default_config_file = "gladiator.conf";
 
-#define X(TYPE, NAME, VALUE, ZERO_ALLOWED) TYPE NAME = VALUE;
+#define X(TYPE, NAME, VALUE, ZERO_ALLOWED, DESCIPTION) TYPE NAME = VALUE;
 CONFIG_X_MACRO
 #undef X
 
@@ -24,14 +24,22 @@ typedef enum {
 	double_e,
 	int_e,
 	unsigned_e,
-	bool_e
+	bool_e,
 } type_e;
 
-static struct config_db { type_e type; void *addr; const char *name; const bool zero_allowed; } db[] = {
-#define X(TYPE, NAME, VALUE, ZERO_ALLOWED) { TYPE ## _e , &NAME, #NAME, ZERO_ALLOWED },
+typedef struct {
+	type_e type; 
+	void *addr; 
+	const char *name; 
+	const bool zero_allowed;
+	const char *description;
+} config_db_t;
+
+static config_db_t db[] = {
+#define X(TYPE, NAME, VALUE, ZERO_ALLOWED, DESCIPTION) { TYPE ## _e , &NAME, #NAME, ZERO_ALLOWED, DESCIPTION },
 CONFIG_X_MACRO
 #undef X
-	{ end_e, NULL, NULL, false }
+	{ end_e, NULL, NULL, false, NULL }
 };
 
 static const bool logging_prepend_level = true;
@@ -74,22 +82,22 @@ bool verbose(verbosity_t v) {
 	return program_log_level >= v;
 }
 
-static bool is_bool_valid(struct config_db *db) {
+static bool is_bool_valid(config_db_t *db) {
 	bool b = *(bool*)(db->addr);
 	return !((int)b > 1 || (!(db->zero_allowed) && !b));
 }
 
-static bool is_double_valid(struct config_db *db) {
+static bool is_double_valid(config_db_t *db) {
 	double d = *(double*)(db->addr);
 	return !(isnan(d) || isinf(d) || (!(db->zero_allowed) && !d));
 }
 
-static bool is_int_valid(struct config_db *db) {
+static bool is_int_valid(config_db_t *db) {
 	int i = *(int*)(db->addr);
 	return !(!(db->zero_allowed) && !i);
 }
 
-static bool is_unsigned_valid(struct config_db *db) {
+static bool is_unsigned_valid(config_db_t *db) {
 	unsigned u = *(unsigned*)(db->addr);
 	return !(!(db->zero_allowed) && !u);
 }
@@ -178,8 +186,7 @@ bool save_config(FILE *out) {
 		case int_e:      r = fprintf(out, "%s %d\n", db[i].name, *(int*)db[i].addr);      break;
 		case unsigned_e: r = fprintf(out, "%s %u\n", db[i].name, *(unsigned*)db[i].addr); break;
 		case end_e:      break;
-		default:
-			error("invalid configuration item type '%d'", db[i].type);
+		default: error("invalid configuration item type '%d'", db[i].type);
 		}
 		if (r < 0) {
 			warning("configuration saving failed: %d\n", r);
@@ -189,12 +196,76 @@ bool save_config(FILE *out) {
 	return true;
 }
 
-/* // Sort out dependency problem before doing this
-cell_t *config_serialize(void)
-{
+cell_t *config_serialize(void) {
+	cell_t *cfg = cons(mksym("configuration"), nil());
+	for (size_t i = 0; db[i].type != end_e; i++) {
+		intptr_t p = 0;
+		double d = 0;
+		bool floating = 0;
+		switch (db[i].type) {
+		case double_e:   d = *(double*)db[i].addr; floating = 1; break;
+		case bool_e:     p = *(bool*)db[i].addr;                 break;
+		case int_e:      p = *(int*)db[i].addr;                  break;
+		case unsigned_e: p = *(unsigned*)db[i].addr;             break;
+		case end_e:      break;
+		default: error("invalid configuration item type '%d'", db[i].type);
+		}
+		cell_t *v = floating ? mkfloat(d) : mkint(p);
+		cell_t *dbi = printer("item %s %x ", db[i].name, v);
+		cell_t *cns = cons(dbi, cdr(cfg));
+		setcdr(cfg, cns);
+	}
+	return cfg;
 }
 
-void config_deserialize(cell_t *c)
-{
+int config_deserialize(cell_t *c) {
+	assert(c);
+	cell_t *items = NULL;
+	if (scanner(c, "configuration %x", &items) < 0) {
+		warning("no configuration");
+		goto fail;
+	}
+	items = cdr(c);
+	for (; type(items) != NIL; items = cdr(items)) {
+		cell_t *v = NULL;
+		char *name = NULL;
+		if (scanner(car(items), "item %s %x", &name, &v) < 0) {
+			warning("invalid item");
+			goto fail;
+		}
+		int vtype = type(v);
+		if (vtype != INTEGER && vtype != FLOATING) {
+			warning("invalid item type for '%s'", name);
+			goto fail;
+		}
+		size_t i = find_config_item(name);
+		if (db[i].type == end_e) {
+			warning("unknown configuration item '%s'", name);
+			goto fail;
+		}
+		int floating = vtype == FLOATING;
+		double d = 0;
+		intptr_t p = 0;
+		if (floating)
+			d = v->p.floating;
+		else
+			p = v->p.integer;
+		if (floating && db[i].type != double_e) {
+			warning("type mismatch in config item '%s'", name);
+			goto fail;
+		}
+
+		switch (db[i].type) {
+		case double_e:   *(double*)db[i].addr = d;   break;
+		case bool_e:     *(bool*)db[i].addr = !!p;   break;
+		case int_e:      *(int*)db[i].addr = p;      break;
+		case unsigned_e: *(unsigned*)db[i].addr = p; break;
+		case end_e:      break;
+		default: error("invalid configuration item type '%d'", db[i].type);
+		}
+	}
+	return 0;
+fail:
+	return -1;
 }
-*/
+

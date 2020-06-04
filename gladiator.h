@@ -26,10 +26,8 @@ typedef struct {
 	bool enemy_gladiator_detected; /**< set true if enemy has been detected*/
 	bool enemy_projectile_detected; /**< set true if enemy projectile has been detected*/
 	bool food_detected; /**< set true if food has been detected */
-	double state1; /**< internal state, experimental*/
 	unsigned time_alive; /**< when the gladiator died, if it did*/
 	unsigned mutations; /**< mutations from previous round*/
-	unsigned total_mutations; /**< total mutations*/
 	unsigned refire_timeout; /**< time left until next fire allowed */
 	double fitness; /**< parents fitness level*/
 	brain_t *brain; /**< the gladiators brain*/
@@ -38,21 +36,22 @@ typedef struct {
 } gladiator_t;
 
 #define X_MACRO_GLADIATOR_INPUTS\
+	X(GLADIATOR_IN_HAS_FIRED,          "gladiator projectile active")\
+	X(GLADIATOR_IN_FIELD_OF_VIEW,      "gladiator field of view angle")\
 	X(GLADIATOR_IN_VISION_ENEMY,       "detect hostile gladiator")\
 	X(GLADIATOR_IN_VISION_PROJECTILE,  "detect hostile projectile")\
 	X(GLADIATOR_IN_VISION_FOOD,        "detect food")\
 	X(GLADIATOR_IN_CAN_FIRE,           "gladiator weapon ready")\
 	X(GLADIATOR_IN_HIT_GLADIATOR,      "gladiator hit enemy")\
-	X(GLADIATOR_IN_FIELD_OF_VIEW,      "gladiator field of view angle")\
-	X(GLADIATOR_IN_COLLISION_WALL,     "wall collision")\
-	X(GLADIATOR_IN_COLLISION_ENEMY,    "hostile gladiator collision")\
-	X(GLADIATOR_IN_STATE1,             "gladiator memory")\
+	X(GLADIATOR_IN_RANDOM,             "gladiator entropy source")\
 	X(GLADIATOR_IN_X,                  "gladiator x position")\
 	X(GLADIATOR_IN_Y,                  "gladiator y position")\
 	X(GLADIATOR_IN_ANGLE_SIN,          "gladiator angle: sine component")\
 	X(GLADIATOR_IN_ANGLE_COS,          "gladiator angle: cosine component")\
-	X(GLADIATOR_IN_RANDOM,             "gladiator entropy source")\
-	X(GLADIATOR_IN_LAST_INPUT,         "INVALID INPUT")
+	X(GLADIATOR_IN_COLLISION_WALL,     "wall collision")\
+	X(GLADIATOR_IN_COLLISION_ENEMY,    "hostile gladiator collision")\
+	X(GLADIATOR_IN_LAST_INPUT,         "INVALID INPUT")\
+
 
 typedef enum {
 #define X(ENUM, DESCRIPTION) ENUM,
@@ -67,7 +66,6 @@ typedef enum {
 	X(GLADIATOR_OUT_FIRE,                 "fire")\
 	X(GLADIATOR_OUT_FIELD_OF_VIEW_OPEN,   "open field of view")\
 	X(GLADIATOR_OUT_FIELD_OF_VIEW_CLOSE,  "close field of view")\
-	X(GLADIATOR_OUT_STATE1,               "gladiator memory")\
 	X(GLADIATOR_OUT_LAST_OUTPUT,          "INVALID OUTPUT")
 
 typedef enum {

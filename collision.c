@@ -9,6 +9,12 @@
 #include "gui.h"
 #include <math.h>
 
+double euclidean_distance(double ax, double ay, double bx, double by) {
+	const double dx = ax - bx;
+	const double dy = ay - by;
+	return hypot(dx, dy);
+}
+
 bool detect_circle_circle_collision(double ax, double ay, double aradius, double bx, double by, double bradius) {
 	double dx = ax - bx;
 	double dy = ay - by;

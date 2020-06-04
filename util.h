@@ -44,9 +44,8 @@ double deg2rad(double deg);
 void random_seed(double seed);
 double random_float(void);
 uint64_t random_u64(void);
+void random_method(int m);
 
-double wrap_or_limit_x(double x);
-double wrap_or_limit_y(double y);
 double wrap_rad(double rad);
 
 bool timer_tick(timer_tick_t *t);
@@ -55,7 +54,5 @@ bool timer_result(timer_tick_t *t);
 
 polar_t cartesian_to_polar(const cartesian_t c);
 cartesian_t polar_to_cartesian(polar_t t);
-
-unsigned binary_logarithm_base_2(unsigned x);
 
 #endif

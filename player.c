@@ -2,6 +2,7 @@
 #include "util.h"
 #include "vars.h"
 #include "gui.h"
+#include "wrap.h"
 #include <assert.h>
 #include <stdlib.h>
 #include <math.h>

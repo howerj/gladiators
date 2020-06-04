@@ -37,11 +37,13 @@ typedef enum {
 	X(bool,      arena_random_gladiator_start,       true,    ZERO,   EINS, "Is the starting position of each gladiator randomized, or do they start in a circle")\
 	X(double,    arena_tick_ms,                      15.0,    ZERO,   BIGS, "Tick speed in milliseconds when in GUI mode")\
 	X(bool,      arena_wraps_at_edges,               false,   ZERO,   EINS, "Does the arena wrap at the edges (wrapping is experimental)")\
-	X(unsigned,  brain_activation_function,          2,       ZERO,   6.0,  "Activation function for the neurons (0 = logistic, 1 = tanh, 2 = atan, 3 = identity, 4 = step, 5 = rectifier, 6 = sin)")\
+	X(unsigned,  brain_activation_function,          0,       ZERO,   6.0,  "Activation function for the neurons (0 = logistic, 1 = tanh, 2 = atan, 3 = identity, 4 = step, 5 = rectifier, 6 = sin)")\
 	X(unsigned,  brain_input_normalization_method,   1,       ZERO,   2.0,  "Input normalization method to neural network (0 = 0 to 1, 1 = -1 to 1, 2 = -1 OR 1)")\
-	X(double,    brain_max_weight_increment,         2.0,     NEGT,   BIGS, "Maximum weight increment per mutation for each neuron weight")\
+	X(double,    brain_max_weight_increment,         8.0,     NEGT,   BIGS, "Maximum weight increment per mutation for each neuron weight")\
 	X(bool,      brain_mix_in_feedback,              true,    ZERO,   EINS, "Mix the output of the previous neural network run with the current input")\
+	X(bool,      brain_retro_is_on,                  true,    ZERO,   EINS, "Is retrograde control on?")\
 	X(bool,      brain_internal_state_is_on,         false,   ZERO,   EINS, "Maintain an internal state variable within each neuron that contributes to the neurons output")\
+	X(bool,      draw_inactive_projectiles,          false,   ZERO,   EINS, "Draw when two gladiators collide on each gladiator")\
 	X(bool,      draw_gladiator_collision,           true,    ZERO,   EINS, "Draw when two gladiators collide on each gladiator")\
 	X(bool,      draw_gladiator_target_lines,        true,    ZERO,   EINS, "Draw an indication of each gladiators field of view")\
 	X(bool,      draw_gladiator_wall_collision,      true,    ZERO,   EINS, "Draw on the gladiator a visual indication that a wall collision has been detected")\
@@ -52,8 +54,8 @@ typedef enum {
 	X(double,    fitness_weight_food,                0.2,     NEGT,   BIGS, "Fitness weight for food objects that the gladiator has collected")\
 	X(double,    fitness_weight_health,              1.5,     NEGT,   BIGS, "Fitness weight for remaining gladiator health")\
 	X(double,    fitness_weight_hits,                1.0,     NEGT,   BIGS, "Fitness weight for number of hits scored")\
-	X(double,    fitness_weight_round,               5.000,   NEGT,   BIGS, "Fitness weight for getting into a higher round")\
-	X(double,    fitness_weight_wall_time,          -0.3,     NEGT,   BIGS, "Fitness weight for time spent hugging the wall in excess of the wall counter")\
+	X(double,    fitness_weight_round,               1.000,   NEGT,   BIGS, "Fitness weight for getting into a higher round")\
+	X(double,    fitness_weight_wall_time,           0.0,     NEGT,   BIGS, "Fitness weight for time spent hugging the wall in excess of the wall counter")\
 	X(double,    fitness_weight_time_alive,          0.000,   NEGT,   BIGS, "Fitness weight for time spend alive")\
 	X(bool,      food_active,                        false,   ZERO,   EINS, "Are the food objects active?")\
 	X(unsigned,  food_control_method,                1,       ZERO,   1.0,  "Food control method (0 = random walk, 1 = bound, 2 = avoid gladiator (not implemented))")\
@@ -64,20 +66,20 @@ typedef enum {
 	X(double,    food_size,                          1.0,     SMOL,   BIGS, "How big is the food?")\
 	X(unsigned,  gladiator_bounce_off_walls,         false,   ZERO,   BIGS, "Do the gladiators bounce off of the walls, or not?")\
 	X(unsigned,  gladiator_brain_depth,              2,       EINS,   BIGS, "Number of layers in the Artificial Neural Network for each gladiator")\
-	X(unsigned,  gladiator_brain_length,             15,      14.0,   BIGS, "Number of neurons per layer in the Artificial Neural Network for each gladiator, must not be less than the number of inputs to the gladiator, even if that input is not active")\
+	X(unsigned,  gladiator_brain_length,             8,       6.0,   BIGS, "Number of neurons per layer in the Artificial Neural Network for each gladiator, must not be less than the number of inputs to the gladiator, even if that input is not active")\
 	X(double,    gladiator_distance_per_tick,        1.0,     NEGT,   BIGS, "The amount a gladiator can move per tick")\
 	X(double,    gladiator_energy_increment,         1.0,     NEGT,   BIGS, "The amount of energy a gladiator can gain per tick")\
-	X(double,    gladiator_field_of_view_divisor,    10.00,   SMOL,   BIGS, "Divisor for field of view changes")\
+	X(double,    gladiator_field_of_view_divisor,    1.00,    SMOL,   BIGS, "Divisor for field of view changes")\
 	X(double,    gladiator_field_of_view_auto_inc,   0.00,    NEGT,   BIGS, "Amount to automatically increase the field of view by each tick")\
 	X(double,    gladiator_fire_threshold,           0.90,    NEGT,   BIGS, "Threshold for output activation for firing")\
 	X(double,    gladiator_fire_timeout,             0.0,     ZERO,   BIGS, "Time in ticks before a gladiator can fire again after firing")\
 	X(double,    gladiator_health,                   2.0,     ZERO,   BIGS, "The gladiators starting health, should be positive including zero")\
-	X(double,    gladiator_max_energy,               8000.0,  NEGT,   BIGS, "Maximum energy value a gladiator can have")\
+	X(double,    gladiator_max_energy,               500.0,   NEGT,   BIGS, "Maximum energy value a gladiator can have")\
 	X(double,    gladiator_max_field_of_view,        1.0,     ZERO,   BIGS, "Maximum field of view angle for the gladiator in radians")\
 	X(double,    gladiator_min_field_of_view,        0.15,    ZERO,   BIGS, "Minimum field of view angle for the gladiator in radians")\
 	X(double,    gladiator_size,                     3.0,     SMOL,   BIGS, "Size of gladiator in units relative to arena size")\
 	X(double,    gladiator_starting_energy,          0.0,     NEGT,   BIGS, "Starting energy for each gladiator, energy is required to fire a projectile")\
-	X(double,    gladiator_turn_rate_divisor,        7.30,    SMOL,   BIGS, "Gladiator turn rate divisor - angle in radians ")\
+	X(double,    gladiator_turn_rate_divisor,        1.00,    SMOL,   BIGS, "Gladiator turn rate divisor - angle in radians ")\
 	X(double,    gladiator_vision,                   400.0,   SMOL,   BIGS, "Arc length for field of vision cone")\
 	X(double,    gladiator_wall_time,                5.0,     ZERO,   BIGS, "Number of ticks gladiator can spend stuck to a wall before its fitness is decremented")\
 	X(double,    max_ticks_per_generation,           10000.0, EINS,   BIGS, "Maximum number of ticks in a match between gladiators")\
@@ -94,25 +96,25 @@ typedef enum {
 	X(bool,      print_gladiator_mutations,          false,   ZERO,   EINS, "Print total number of mutations a gladiator has gone through")\
 	X(bool,      print_gladiator_orientation,        false,   ZERO,   EINS, "Print the gladiators orientation")\
 	X(bool,      print_gladiators_alive,             false,   ZERO,   EINS, "Print whether a gladiator is alive or not")\
-	X(bool,      print_gladiator_state1,             false,   ZERO,   EINS, "Print the current state variable value")\
 	X(bool,      print_gladiator_team_number,        false,   ZERO,   EINS, "Print the gladiators team number")\
 	X(bool,      print_gladiator_total_mutations,    false,   ZERO,   EINS, "Print the total number of mutations for this gladiator")\
 	X(bool,      print_gladiator_x,                  false,   ZERO,   EINS, "Print gladiator X position")\
 	X(bool,      print_gladiator_y,                  false,   ZERO,   EINS, "Print gladiator Y position")\
-	X(bool,      input_gladiator_proximity,          true,    ZERO,   EINS, "Turn input proximity sensing on for field of view detection")\
-	X(bool,      input_gladiator_hit,                false,   ZERO,   EINS, "Turn input 'is gladiator hit' on")\
-	X(bool,      input_gladiator_can_fire,           true,    ZERO,   EINS, "Turn input 'is gladiator able to fire' on")\
+	X(bool,      input_gladiator_proximity,          false,   ZERO,   EINS, "Turn input proximity sensing on for field of view detection")\
+	X(bool,      input_gladiator_has_fired,          true,    ZERO,   EINS, "Turn input 'is there an active projectile fired by this gladiator' on")\
 	X(bool,      input_gladiator_field_of_view,      true,    ZERO,   EINS, "Turn input 'gladiator field of view on'")\
-	X(bool,      input_gladiator_vision_food,        true,    ZERO,   EINS, "Turn input 'gladiator can see food in field of view' on")\
-	X(bool,      input_gladiator_vision_projectile,  true,    ZERO,   EINS, "Turn input 'gladiator can see enemy projectile in field of view' on")\
 	X(bool,      input_gladiator_vision_enemy,       true,    ZERO,   EINS, "Turn input 'gladiator can see enemy in field of view' on")\
-	X(bool,      input_gladiator_random,             true,    ZERO,   EINS, "Turn input 'random value' on, this is an entropy source")\
+	X(bool,      input_gladiator_vision_projectile,  true,    ZERO,   EINS, "Turn input 'gladiator can see enemy projectile in field of view' on")\
+	X(bool,      input_gladiator_vision_food,        true,    ZERO,   EINS, "Turn input 'gladiator can see food in field of view' on")\
+	X(bool,      input_gladiator_can_fire,           true,    ZERO,   EINS, "Turn input 'is gladiator able to fire' on")\
+	X(bool,      input_gladiator_hit,                false,   ZERO,   EINS, "Turn input 'is gladiator hit' on")\
+	X(bool,      input_gladiator_random,             false,   ZERO,   EINS, "Turn input 'random value' on, this is an entropy source")\
 	X(bool,      input_gladiator_x,                  false,   ZERO,   EINS, "Turn input 'x position' on")\
 	X(bool,      input_gladiator_y,                  false,   ZERO,   EINS, "Turn input 'y position' on")\
-	X(bool,      input_gladiator_orientation,        true,    ZERO,   EINS, "Turn input 'orientation' on")\
-	X(bool,      input_gladiator_state1,             true,    ZERO,   EINS, "Turn input 'state variable' on")\
-	X(bool,      input_gladiator_collision_enemy,    true,    ZERO,   EINS, "Turn input 'collision with enemy' on")\
-	X(bool,      input_gladiator_collision_wall,     true,    ZERO,   EINS, "Turn input 'collision with wall' on")\
+	X(bool,      input_gladiator_orientation,        false,   ZERO,   EINS, "Turn input 'orientation' on")\
+	X(bool,      input_gladiator_collision_enemy,    false,   ZERO,   EINS, "Turn input 'collision with enemy' on")\
+	X(bool,      input_gladiator_collision_wall,     false,   ZERO,   EINS, "Turn input 'collision with wall' on")\
+	X(unsigned,  program_random_method,              0,       ZERO,   EINS, "Set the Pseudo Random Number Generator used (0 = lcg, 1 = xorshift)")\
 	X(unsigned,  program_headless_loops,             30,      ZERO,   BIGS, "Number of loops to run the program without launching the GUI")\
 	X(unsigned,  program_log_level,                  NOTE,    ZERO,   5.0,  "Set the program log level")\
 	X(bool,      program_pause_after_new_generation, false,   ZERO,   EINS, "In GUI mode, pause after a generation has been completed")\

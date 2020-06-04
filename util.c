@@ -13,8 +13,11 @@
 #include <time.h>
 
 typedef struct prng_t {
-	uint64_t seed;
+	int method;
+	uint64_t seed[2];
 } prng_t;
+
+static prng_t rstate;
 
 void fatal(char *fmt, ...) {
 	va_list args;
@@ -50,6 +53,21 @@ double deg2rad(double deg) {
 	return (deg / 360.0) * 2.0 * PI;
 }
 
+static uint64_t xorshift128(uint64_t s[2]) { /* A few rounds of SPECK or TEA ciphers also make good PRNG */
+	assert(s);
+	if (!s[0] && !s[1])
+		s[0] = 1;
+	uint64_t a = s[0];
+	const uint64_t b = s[1];
+	s[0] = b;
+	a ^= a << 23;
+	a ^= a >> 18;
+	a ^= b;
+	a ^= b >>  5;
+	s[1] = a;
+	return a + b;
+}
+
 static uint32_t temper(uint32_t x) {
     x ^= x >> 11;
     x ^= x << 7 & 0x9D2C5680;
@@ -65,12 +83,16 @@ static uint32_t lcg64_temper(uint64_t *seed) {
 	return temper(*seed >> 32);
 }
 
-static uint32_t prng(prng_t *state) {
-	assert(state);
-	return lcg64_temper(&state->seed);
+void random_method(int method) {
+	rstate.method = method;
 }
 
-static prng_t rstate;
+static uint32_t prng(prng_t *state) {
+	assert(state);
+	if (state->method)
+		return xorshift128(state->seed);
+	return lcg64_temper(&state->seed[0]);
+}
 
 uint64_t random_u64(void) {
 	return (((uint64_t)prng(&rstate)) << 32u) | ((uint64_t)prng(&rstate));
@@ -84,13 +106,13 @@ static double prngf(prng_t *state) {
 }
 
 void random_seed(double seed) {
-	rstate.seed = seed;
+	rstate.seed[0] = seed;
 }
 
 double random_float(void) {
 	static bool set = false;
 	if (!set) {
-		rstate.seed = (rstate.seed != 0.0) ? rstate.seed : (uint64_t)time(NULL);
+		rstate.seed[0] = (rstate.seed[0] != 0.0) ? rstate.seed[0] : (uint64_t)time(NULL);
 		set = true;
 	}
   	return prngf(&rstate);
@@ -136,13 +158,4 @@ cartesian_t polar_to_cartesian(const polar_t p) {
 	c.y = sin(p.theta) * p.rho;
 	return c;
 }
-
-unsigned binary_logarithm_base_2(unsigned x) {
-	unsigned b = 0;
-	assert(x);
-	while (x >>= 1)
-		b++;
-	return b;
-}
-
 

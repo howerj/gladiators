@@ -13,8 +13,10 @@
 
 typedef struct {
 	size_t weight_count;
+	unsigned mutations;
 	double bias;
-	double alpha; /**< arbitrary parameter for neurons function */
+	double retro_weight;
+	double *retro;
 	double state;
 	double state_weight;
 	double state_forget;
@@ -53,7 +55,8 @@ static double randomer(double original) {
 static neuron_t *neuron_new(bool rand, size_t length) {
 	neuron_t *n = allocate(sizeof(*n) + sizeof(n->weights[0])*length);
 	n->bias         = rand ? randomer(n->bias)         : 1.0;
-	n->alpha        = rand ? randomer(n->alpha)        : 1.0;
+	if (n->retro)
+		n->retro_weight = rand ? randomer(n->retro_weight) : 1.0;
 	if (brain_internal_state_is_on) {
 		n->state_weight = rand ? randomer(n->state_weight) : 1.0;
 		n->state_forget = rand ? randomer(n->state_forget) : 1.0;
@@ -94,13 +97,14 @@ static void layer_delete(layer_t *l) {
 
 static void neuron_copy_over(neuron_t *dst, const neuron_t *src) {
 	assert(dst && src);
-	dst->bias = src->bias;
+	dst->bias         = src->bias;
 	dst->weight_count = src->weight_count;
-	dst->alpha = src->alpha;
+	dst->retro_weight = src->retro_weight;
 	dst->state_weight = src->state_weight;
 	dst->state_forget = src->state_forget;
 	dst->state_accum  = src->state_accum;
 	dst->state_init   = src->state_init;
+	dst->mutations    = src->mutations;
 	for (size_t i = 0; i < src->weight_count; i++)
 		dst->weights[i] = src->weights[i];
 }
@@ -124,16 +128,20 @@ static double mutation(double original, size_t length, unsigned *count) {
 
 static void neuron_mutate(neuron_t *n, size_t depth, unsigned *count) {
 	assert(n && count);
-	n->bias = mutation(n->bias, n->weight_count*depth, count);
-	n->alpha = mutation(n->bias, n->weight_count*depth, count);
+	const size_t length = n->weight_count * depth;
+	unsigned *muts = &n->mutations;
+	n->bias = mutation(n->bias, length, muts);
+	if (n->retro)
+		n->retro_weight = mutation(n->bias, length, muts);
 	if (brain_internal_state_is_on) {
-		n->state_weight = mutation(n->state_weight, n->weight_count*depth, count);
-		n->state_forget = mutation(n->state_forget, n->weight_count*depth, count);
-		n->state_accum  = mutation(n->state_accum,  n->weight_count*depth, count);
-		n->state_init   = mutation(n->state_init,   n->weight_count*depth, count);
+		n->state_weight = mutation(n->state_weight, length, muts);
+		n->state_forget = mutation(n->state_forget, length, muts);
+		n->state_accum  = mutation(n->state_accum,  length, muts);
+		n->state_init   = mutation(n->state_init,   length, muts);
 	}
 	for (size_t i = 0; i < n->weight_count; i++)
-		n->weights[i] = mutation(n->weights[i], n->weight_count*depth, count);
+		n->weights[i] = mutation(n->weights[i], length, muts);
+	*count = n->mutations;
 }
 
 /* These could be removed if the inverse of the scanner function existed */
@@ -143,7 +151,7 @@ static cell_t c_layers  = { .type = SYMBOL, .p.string = "layers" };
 
 static cell_t *neuron_serialize(neuron_t *n) {
 	cell_t *head = cons(&c_weights, nil());
-	cell_t *r = printer("neuron (bias %f) (alpha %f) (state %f %f %f %f) %x", n->bias, n->alpha, n->state_weight, n->state_forget, n->state_accum, n->state_init, head);
+	cell_t *r = printer("neuron (bias %f) (mutations %d) (retro %f) (state %f %f %f %f) %x", n->bias, (intptr_t)n->mutations, n->retro_weight, n->state_weight, n->state_forget, n->state_accum, n->state_init, head);
 	assert(r);
 	cell_t *op = head;
 	for (size_t i = 0; i < n->weight_count; op = cdr(op), i++)
@@ -161,6 +169,7 @@ static cell_t *layer_serialize(layer_t *layer) {
 }
 
 cell_t *brain_serialize(brain_t *b) {
+	assert(b);
 	cell_t *head = cons(&c_layers, nil());
 	cell_t *r    = printer("brain (depth %d) (length %d) %x", (intptr_t)(b->depth), (intptr_t)(b->length), head);
 	assert(r);
@@ -168,6 +177,27 @@ cell_t *brain_serialize(brain_t *b) {
 	for (size_t i = 0; i < b->depth; op = cdr(op), i++)
 		setcdr(op, cons(layer_serialize(b->layers[i]), nil()));
 	return r;
+}
+
+static void brain_apply_retro(brain_t *b, unsigned from, unsigned to) {
+	assert(b);
+	assert(from < b->depth);
+	assert(to < b->depth);
+	layer_t *f = b->layers[from];
+	layer_t *t = b->layers[to];
+	assert(t->length == f->length);
+	for (size_t i = 0; i < t->length; i++) {
+		neuron_t *n = t->neurons[i];
+		n->retro = &f->outputs[i];
+	}
+}
+
+static void brain_wire_up(brain_t *b) {
+	assert(b);
+	if (brain_retro_is_on)
+		brain_apply_retro(b, b->depth - 1, b->depth - 1);
+	if (brain_mix_in_feedback)
+		brain_apply_retro(b, b->depth - 1, 0);
 }
 
 brain_t *brain_new(bool alloc_layers, bool rand, size_t length, size_t depth) {
@@ -178,6 +208,8 @@ brain_t *brain_new(bool alloc_layers, bool rand, size_t length, size_t depth) {
 	b->layers    = allocate(sizeof(b->layers[0]) * depth);
 	for (size_t i = 0; alloc_layers && i < b->depth; i++)
 		b->layers[i] = layer_new(true, rand, length);
+	if (alloc_layers)
+		brain_wire_up(b);
 	return b;
 }
 
@@ -186,6 +218,7 @@ brain_t *brain_copy(const brain_t *b) {
 	brain_t *n = brain_new(false, false, b->length, b->depth);
 	for (size_t i = 0; i < b->depth; i++)
 		n->layers[i] = layer_copy(b->layers[i]);
+	brain_wire_up(n);
 	return n;
 }
 
@@ -222,10 +255,10 @@ static double calculate_response(neuron_t *n, const double in[], size_t length) 
 	double total = n->bias;
 	for (size_t i = 0; i < length; i++)
 		total += in[i] * n->weights[i];
-	/* The brains internal state should probably be made to be more
-	 * elaborate */
 	if (brain_internal_state_is_on)
 		total += n->state * n->state_weight;
+	if (n->retro)
+		total += *n->retro * n->retro_weight;
 	const double a = activate(brain_activation_function, total);
 	if (brain_internal_state_is_on) {
 		n->state += a * n->state_accum;
@@ -247,8 +280,6 @@ void brain_update(brain_t *restrict b, const double *restrict inputs, const size
 	for (size_t i = 0; i < in_length; i++)
 		b->inputs[i] = inputs[i];
 	update_layer(b->layers[0], b->inputs, in_length, 0);
-	if (brain_mix_in_feedback && ((b->length - in_length) < b->length))
-		update_layer(b->layers[0], b->layers[b->depth - 1]->outputs, b->length - in_length, in_length);
 	for (size_t i = 1; i < b->depth; i++)
 		update_layer(b->layers[i], b->layers[i-1]->outputs, b->layers[i-1]->length, 0);
 	for (size_t i = 0; i < out_length; i++)
@@ -257,22 +288,29 @@ void brain_update(brain_t *restrict b, const double *restrict inputs, const size
 
 static void layer_mutate(layer_t *l, size_t depth, unsigned *count) {
 	assert(l && count);
-	for (size_t i = 0; i < l->length; i++)
-		neuron_mutate(l->neurons[i], depth, count);
+	unsigned muts = 0, total = 0;
+	for (size_t i = 0; i < l->length; i++) {
+		neuron_mutate(l->neurons[i], depth, &muts);
+		total += muts;
+	}
+	*count = total;
 }
 
 unsigned brain_mutate(brain_t *b) {
 	assert(b);
-	unsigned mutations = 0;
-	for (size_t i = 0; i < b->depth; i++)
-		layer_mutate(b->layers[i], b->depth, &mutations);
-	return mutations;
+	unsigned muts = 0, total = 0;
+	for (size_t i = 0; i < b->depth; i++) {
+		layer_mutate(b->layers[i], b->depth, &muts);
+		total += muts;
+	}
+	return total;
 }
 
 neuron_t *neuron_deserialize(cell_t *c, size_t length) {
-	double bias = 0, alpha = 0, state_weight = 0, state_forget = 0, state_accum = 0, state_init = 0;
-	cell_t *weights;
-	int r = scanner(c, "neuron (bias %f) (alpha %f) (state %f %f %f %f) (weights %l)", &bias, &alpha, &state_weight, &state_forget, &state_accum, &state_init, &weights);
+	double bias = 0, retro_weight = 0, state_weight = 0, state_forget = 0, state_accum = 0, state_init = 0;
+	intptr_t muts = 0;
+	cell_t *weights = NULL;
+	int r = scanner(c, "neuron (bias %f) (mutations %d) (retro %f) (state %f %f %f %f) (weights %l)", &bias, &muts, &retro_weight, &state_weight, &state_forget, &state_accum, &state_init, &weights);
 	if (r < 0 || !weights) {
 		warning("neuron deserialization failed: %d", r);
 		return NULL;
@@ -286,8 +324,9 @@ neuron_t *neuron_deserialize(cell_t *c, size_t length) {
 		}
 		n->weights[i] = FLT(car(weights));
 	}
+	n->mutations    = muts;
 	n->bias         = bias;
-	n->alpha        = alpha;
+	n->retro_weight = retro_weight;
 	n->state_weight = state_weight;
 	n->state_forget = state_forget;
 	n->state_accum  = state_accum;

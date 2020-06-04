@@ -24,7 +24,7 @@ typedef enum {
 	INVALID_CELL_TYPE
 } cell_type_e;
 
-#define CELL_MAX_STRING_LENGTH (256)
+#define CELL_MAX_STRING_LENGTH (256u)
 
 typedef struct cell_t {
 	union data {

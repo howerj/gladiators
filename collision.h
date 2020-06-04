@@ -1,6 +1,6 @@
 /** @file       collision.h
  *  @brief      collision detection algorithms
- *  @author     Richard Howe (2016)
+ *  @author     Richard James Howe (2016, 2020)
  *  @license    MIT <https://opensource.org/licenses/MIT>
  *  @email      howe.r.j.89@gmail.com */
 
@@ -17,5 +17,7 @@ bool detect_circle_circle_collision(
 bool detect_circle_arc_collision(
 		double kx, double ky, double korientation, double ksweep, double klen,
 		double cx, double cy, double cradius);
+
+double euclidean_distance(double ax, double ay, double bx, double by);
 
 #endif

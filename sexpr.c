@@ -16,7 +16,7 @@ typedef struct {
 } lexer_t;
 
 static lexer_t *lexer_new(FILE *fin, const char *sin) {
-	assert(!!fin ^ !!sin);
+	assert((!!fin) ^ (!!sin));
 	lexer_t *l = allocate(sizeof(*l));
 	l->s = sin;
 	l->f = fin;
@@ -239,7 +239,7 @@ static cell_t *parse_string(lexer_t *l) {
 				s[i] = '\n';
 				break;
 			default:
-				fprintf(stderr, "invalid escaped char '%u'", ch);
+				fprintf(stderr, "invalid escaped char '%u'", (unsigned)ch);
 				goto fail;
 			}
 			break;
@@ -468,7 +468,7 @@ static const char *type2name(cell_type_e t) {
 static int _expect(cell_t *c, cell_type_e t, const char *file, const char *func, unsigned line) {
 	if (t == type(c))
 		return 1;
-	fprintf(stderr, "%s:%s:%d, expected %s / got %s\n", file, func, line, type2name(t), type2name(type(c)));
+	fprintf(stderr, "%s:%s:%u, expected %s / got %s\n", file, func, line, type2name(t), type2name(type(c)));
 	if (type(c) == STRING || type(c) == SYMBOL)
 		fprintf(stderr, "%s: %s\n", type(c) == SYMBOL ? "symbol" : "string",  c->p.string);
 	if (type(c) == CONS) {
@@ -615,14 +615,13 @@ static int _vscanner(cell_t *c, int i, const char *fmt, va_list ap) {
 				if (!expect(car(c), STRING))
 					return -1;
 				while (strchr("\"", fmt[i])) {
-					if (fmt[i] == '\\') /**@todo proper processing of this format strings */
+					if (fmt[i] == '\\')
 						i++;
 					s[j++] = fmt[i++];
 				}
 				if (strcmp(STR(car(c)), s))
 					return -1;
 			} else { /* symbol literal */
-				/**@todo integer and float literals */
 				size_t j = 0;
 				if (!expect(car(c), SYMBOL))
 					return -1;
@@ -652,11 +651,11 @@ cell_t *printer(const char *fmt, ...) {
 }
 
 static cell_t *_vprinter(int *i, const char *fmt, va_list ap) {
-	char f;
+	assert(i);
 	assert(fmt);
 	cell_t *head = cell_new(CONS);
 	cell_t *c = head, *prev = NULL;
-	while ((f = fmt[*i])) {
+	for(char f = 0; (f = fmt[*i]); ) {
 		if (isspace(f)) {
 			(*i)++;
 			continue;
@@ -672,7 +671,6 @@ static cell_t *_vprinter(int *i, const char *fmt, va_list ap) {
 			(*i)++;
 			f = fmt[*i];
 			switch (f) {
-			/**@todo literal % in strings*/
 			case 'x':
 				v = va_arg(ap, cell_t *);
 				n = cell_new(CONS);
@@ -707,6 +705,8 @@ static cell_t *_vprinter(int *i, const char *fmt, va_list ap) {
 			}
 			default:
 				fatal("invalid format specifier %u/%c at %d", f, f, *i);
+				cell_delete(c);
+				return NULL;
 			}
 			c->p.cons.car = v;
 			c->p.cons.cdr = n;

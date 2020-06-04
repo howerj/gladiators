@@ -8,6 +8,7 @@
 #include "vars.h"
 #include "util.h"
 #include "gui.h"
+#include "wrap.h"
 #include <assert.h>
 #include <math.h>
 #include <stdlib.h>
@@ -39,11 +40,12 @@ void projectile_deactivate(projectile_t *p) {
 	assert(p);
 	p->travelled += projectile_range;
 	p->team = (unsigned)-1l;
+	p->color = MAGENTA;
 }
 
 void projectile_draw(projectile_t *p) {
 	assert(p);
-	if (!projectile_is_active(p))
+	if (!draw_inactive_projectiles && !projectile_is_active(p))
 		return;
 	const color_t *color = p->color ? p->color : RED;
 	draw_regular_polygon_filled(p->x, p->y, p->orientation, projectile_size, TRIANGLE, color);
@@ -84,10 +86,11 @@ bool projectile_fire(projectile_t *p, unsigned team, double x, double y, double 
 cell_t *projectile_serialize(projectile_t *p) {
 	assert(p);
 	cell_t *c = printer("projectile (team %d) (x %f) (y %f) (orientation %f) (travelled %f)",
-			p->team,
+			(intptr_t)p->team,
 			p->x,
 			p->y,
-			p->orientation);
+			p->orientation,
+			p->travelled);
 	assert(c);
 	return c;
 }
@@ -95,9 +98,10 @@ cell_t *projectile_serialize(projectile_t *p) {
 projectile_t *projectile_deserialize(cell_t *c) {
 	assert(c);
 	projectile_t *p = projectile_new(0, 0, 0, 0);
+	intptr_t team = 0;
 	int r = scanner(c, "projectile (team %d) (x %f) (y %f) (orientation %f) (travelled %f)",
-			&p->team, &p->x, &p->y, &p->orientation, &p->travelled);
-
+			&team, &p->x, &p->y, &p->orientation, &p->travelled);
+	p->team = team;
 	if (r < 0) {
 		projectile_delete(p);
 		return NULL;

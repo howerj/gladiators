@@ -1,14 +1,30 @@
-# readme.md
-# Gladiators
+% arena(1) | Evolve Neural Net Controlled Gladiator
 
-An arena for battling [neural network][] controlled gladiators and improving
-them with [genetic algorithms][].
+# NAME
 
-Below is a picture of some of the game play:
+ARENA - A program for experimenting and evolving neural net controlled gladiators
 
-![gladiators-1][]
+# SYNOPSES
 
-## Introduction
+arena [-] [-h] [-v] [-s] [-p] [-H]
+
+# DESCRIPTION
+
+	Author:     Richard James Howe
+	License:    MIT
+	Repository: <https://github.com/howerj/gladiators>
+	Email:      howe.r.j.89@gmail.com
+	Copyright:  2016-2020 Richard James Howe
+
+This is a simple toy program designed to display a series of 'gladiators'
+that can fire at and evade each other. The gladiators are controlled by a
+neural network, which gets mutated and bred every generation of gladiators.
+Which gladiators make it into the next round depends on their fitness level
+determined at the end of the current round.
+
+There is a default configuration file called "gladiators.conf", which can be
+regenerated if it is missing. This file will be loaded, if present, after any
+command line arguments have been processed.
 
 This program is intended to be a simple simulator for a battle arena where
 'gladiators' (simple [neural network][] controlled game artificial intelligences) 
@@ -32,10 +48,60 @@ source code for this application, which is a shame, the video shows the
 gladiators learning how to move, how to fire, and eventually how to dodge enemy
 projectiles.
 
-## Building
+# LICENSE
+
+This is released under the MIT License.
+
+# OPTIONS
+
+Several options may be given to the program before it becomes a Windowed
+application.
+
+- '-' 
+
+Stop processing any command line options
+
+- '-h' 
+
+Print out a help message and exit with an error.
+
+- '-v;
+
+Increase the verbosity or log level of the program.
+
+- '-s'
+
+Attempt to save a default "gladiators.conf" configuration file to disk, and
+exit.
+
+- '-p'
+
+Print the default configuration to stdout(3) and exit.
+
+- '-H'
+
+Run in 'headerless' mode, or without a GUI.
+
+# EXAMPLES
+
+	./arena
+
+Run the arena, loading the default configuration file if present from the disk.
+
+
+# EXIT STATUS
+
+This command returns zero on success and non zero on failure.
+
+# BUGS
+This program is a work in progress, the gladiators do not do anything useful at
+the moment.
+
+
+## BUILDING
 
 To build [gcc][] (or a suitable C compiler), [make][] (GNU Make was used), 
-and [OpenGl][]/[Glut][] (pre-compiled binaries are available for most Linux
+and [OpenGl][]/[glut][] (pre-compiled binaries are available for most Linux
 distributions as well as Windows) are needed. Type 'make' to build and 'make
 run' to run the default configuration, this should take a while to run and then
 pop up a window with some 'evolved' gladiators.
@@ -45,42 +111,6 @@ pop up a window with some 'evolved' gladiators.
 As this project was meant to be an introduction for the author into both
 [OpenGl][] and [neural networks][] the theory will be brief and light. For a
 good introduction to [neural networks][] see the [Usenet FAQ][].
-
-### Game mechanics
-
-### Neural Network
-
-The neural network is quite configurable, there is nothing special about it
-however, the number of layers in the neural network can be configured as can
-the size of each layer, although the length of the layers much be equal for
-each layer, and must be greater or equal to the number of inputs or output,
-which ever is larger. Each neuron is fully connected to the outputs of the
-previous layer.
-
-This Artificial Neural Network (ANN) forms the "brain" of the gladiator, this
-ANN is fed inputs about the gladiator and its environment and has a few 
-outputs it can actuate, such as whether to turn left or to turn right.
-
-The [activation function][] for the ANN is configurable, some work better than
-others and the difference can be quite substantial. It helps if the function is
-[smooth][], 
-
-### Fitness and selection
-
-### Mutation and Cross Over
-
-## Running the program
-
-The program has two modes of operation, a headless mode which runs a lot
-quicker and does not draw the arena and gladiators, and a mode which uses
-[Glut][] and [OpenGL][] to display the gladiators competing against each other.
-
-The techniques to draw the objects is quite primitive, however it was partly
-meant as an introduction for me in how to use [OpenGL][]. 
-
-A file called **gladiator.conf** will be loaded at startup, if present, any
-command line options which affect configurable items (such as increasing the
-log level) will take precedence over the configuration items.
 
 ## Configurable Items
 
@@ -107,7 +137,7 @@ For neural networks:
 * <ftp://ftp.sas.com/pub/neural/FAQ.html>
 * <https://en.wikipedia.org/wiki/Activation_function>
 
-## Future direction
+# Future direction
 
 It would be good to see if it would be possible to evolve gladiators that could
 cooperate together in teams against other teams. 
@@ -116,16 +146,9 @@ Another possible avenue for development would be to make this more into a game
 where a player could compete against the results of the contest to see which
 one can last the longest.
 
-### To Do
+# To Do
 
 * The physics engine is a big dodgy and could use work
-* Some of the configuration options provide quite nice little gladiators that
-sort of follow each other around and fire, it would be good to provide
-examples.
-* Some of the inputs are discontinuous and are thus probably not very useful,
-this could be changed.
-* Work on S-Expression library so state can be saved and loaded in again, this
-should be turned into a standalone library.
 * Work on adding a player: They should only be able to see what a gladiator
 can, which is quite limiting, adding to the challenge.
 * The selection mechanism needs to be improved, each generation should have a
@@ -142,11 +165,12 @@ neural network AI could go up against a manually programmed one, using
 * A version in which the gladiators would have to learn to pick up food and
 drop it off at a place could be made as well. This would probably require two
 more inputs; food carried and drop off point in vision.
+* Generate the manual page from this file
+* Make the program into a library with a CLI and GUI front end
 
 [GPGOAP]: https://github.com/stolk/GPGOAP
 [A video]: https://www.youtube.com/watch?v=u2t77mQmJiY
 [doublezoom.free.fr]: http://doublezoom.free.fr/programmation/AG_Exemple_Fighting.php
-[Glut]: https://www.opengl.org/resources/libraries/glut/
 [OpenGL]: https://www.opengl.org/
 [neural network]: https://en.wikipedia.org/wiki/Artificial_neural_network
 [neural networks]: https://en.wikipedia.org/wiki/Artificial_neural_network
@@ -155,7 +179,6 @@ more inputs; food carried and drop off point in vision.
 [Circular Sector]: https://en.wikipedia.org/wiki/Circular_sector
 [genetic algorithms]: https://en.wikipedia.org/wiki/Genetic_algorithm
 [Usenet FAQ]: ftp://ftp.sas.com/pub/neural/FAQ.html
-[gladiators-1]: img/gladiators-1.png
 [smooth]: https://en.wikipedia.org/wiki/Smoothness
 [gcc]: https://gcc.gnu.org/
 [make]: https://www.gnu.org/software/make/

@@ -7,6 +7,7 @@
 #include "vars.h"
 #include "util.h"
 #include "gui.h"
+#include "wrap.h"
 #include <assert.h>
 #include <stdlib.h>
 #include <math.h>

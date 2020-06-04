@@ -11,6 +11,7 @@
 #include "color.h"
 #include "vars.h"
 #include "gui.h"
+#include "wrap.h"
 #include <assert.h>
 #include <math.h>
 #include <stdbool.h>
@@ -45,21 +46,26 @@ static void update_field_of_view(gladiator_t *g, double outputs[]) {
 	assert(g && outputs);
 	g->field_of_view += outputs[GLADIATOR_OUT_FIELD_OF_VIEW_OPEN] / gladiator_field_of_view_divisor;
 	g->field_of_view -= outputs[GLADIATOR_OUT_FIELD_OF_VIEW_CLOSE] / gladiator_field_of_view_divisor;
-	g->field_of_view += gladiator_field_of_view_auto_inc;
 	g->field_of_view = MIN(g->field_of_view, gladiator_max_field_of_view);
 	g->field_of_view = MAX(g->field_of_view, gladiator_min_field_of_view);
+	outputs[GLADIATOR_OUT_FIELD_OF_VIEW_OPEN]  = g->field_of_view / gladiator_max_field_of_view;
+	outputs[GLADIATOR_OUT_FIELD_OF_VIEW_CLOSE] = g->field_of_view / gladiator_max_field_of_view;
 }
 
 static void update_orientation(gladiator_t *g, double outputs[]) {
 	assert(g && outputs);
-	g->orientation  += wrap_rad(outputs[GLADIATOR_OUT_TURN_LEFT]) / gladiator_turn_rate_divisor;
-	g->orientation  -= wrap_rad(outputs[GLADIATOR_OUT_TURN_RIGHT]) / gladiator_turn_rate_divisor;
+	const double left  = outputs[GLADIATOR_OUT_TURN_LEFT] / gladiator_turn_rate_divisor;
+	const double right = outputs[GLADIATOR_OUT_TURN_RIGHT] / gladiator_turn_rate_divisor;
+	assert(!isnan(g->orientation));
+	assert(!isinf(g->orientation));
+	assert(g->orientation == g->orientation);
+	g->orientation  += left - right;
 	g->orientation   = wrap_rad(g->orientation);
 }
 
 static void update_distance(gladiator_t *g, double outputs[]) {
 	assert(g && outputs);
-	/**@todo add inertia */
+	/*NOTE: we could add inertia as an option */
 	double distance = gladiator_distance_per_tick * outputs[GLADIATOR_OUT_MOVE_FORWARD];
 	distance = MAX(0, MIN(gladiator_distance_per_tick, distance));
 	g->x += distance * cos(g->orientation);
@@ -94,7 +100,6 @@ void gladiator_update(gladiator_t *g, const double inputs[], double outputs[]) {
 
 	brain_update(g->brain, inputs, GLADIATOR_IN_LAST_INPUT, outputs, GLADIATOR_OUT_LAST_OUTPUT);
 
-	g->state1 = outputs[GLADIATOR_IN_STATE1];
 	update_field_of_view(g, outputs);
 	update_orientation(g, outputs);
 	update_distance(g, outputs);
@@ -120,7 +125,7 @@ void gladiator_draw(gladiator_t *g) {
 		draw_line(g->x, g->y, g->orientation + g->field_of_view/2, Ymax/5, g->radius/2, target);
 	}
 	if (draw_gladiator_short_stats)
-		draw_text(WHITE, g->x, g->y - g->radius*2, "%f/%f/%u", g->health, g->energy, g->team);
+		draw_text(WHITE, g->x, g->y - g->radius*2, "%g/%g/%u/%g", g->health, g->energy, g->team, g->fitness);
 }
 
 gladiator_t *gladiator_new(unsigned team, double x, double y, double orientation) {
@@ -161,9 +166,7 @@ gladiator_t *gladiator_copy(gladiator_t *g) {
 	assert(g);
 	gladiator_t *n = gladiator_new(g->team, g->x, g->y, g->orientation);
 	brain_delete(n->brain);
-	n->state1 = g->state1;
 	n->fitness = g->fitness;
-	n->total_mutations = g->total_mutations;
 	n->brain = brain_copy(g->brain);
 	return n;
 }
@@ -204,8 +207,7 @@ cell_t *gladiator_serialize(gladiator_t *g) {
 			"(health %f) "
 			"(team %d) (hits %d) (foods %d) "
 			"(energy %f) "
-			"(mutations %d) (total-mutations %d) "
-			"(state1 %f) "
+			"(mutations %d) "
 			"(fitness %f) "
 			" %x ",
 			g->x, g->y, g->orientation,
@@ -213,8 +215,7 @@ cell_t *gladiator_serialize(gladiator_t *g) {
 			g->health,
 			(intptr_t)(g->team), (intptr_t)(g->hits), (intptr_t)(g->foods),
 			g->energy,
-			(intptr_t)g->mutations, (intptr_t)g->total_mutations,
-			g->state1,
+			(intptr_t)g->mutations, 
 			g->fitness,
 			b);
 	assert(c);
@@ -226,7 +227,7 @@ gladiator_t *gladiator_deserialize(cell_t *c) {
 	gladiator_t *g = gladiator_new(0, 0, 0, 0);
 	brain_delete(g->brain);
 	g->brain = NULL;
-	intptr_t team = 0, hits = 0, foods = 0, mutations = 0, total_mutations = 0;
+	intptr_t team = 0, hits = 0, foods = 0, mutations = 0;
 	cell_t *cb = NULL;
 
 	int r = scanner(c,
@@ -236,8 +237,7 @@ gladiator_t *gladiator_deserialize(cell_t *c) {
 			"(health %f) "
 			"(team %d) (hits %d) (foods %d) "
 			"(energy %f) "
-			"(mutations %d) (total-mutations %d) "
-			"(state1 %f) "
+			"(mutations %d) "
 			"(fitness %f) "
 			" %x ",
 			&g->x, &g->y, &g->orientation,
@@ -245,8 +245,7 @@ gladiator_t *gladiator_deserialize(cell_t *c) {
 			&g->health,
 			&team, &hits, &foods,
 			&g->energy,
-			&mutations, &total_mutations,
-			&g->state1,
+			&mutations, 
 			&g->fitness,
 			&cb);
 	if (r < 0) {
@@ -263,7 +262,6 @@ gladiator_t *gladiator_deserialize(cell_t *c) {
 	g->hits = hits;
 	g->foods = foods;
 	g->mutations = mutations;
-	g->total_mutations = total_mutations;
 	return g;
 }
 

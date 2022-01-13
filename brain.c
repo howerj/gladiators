@@ -144,24 +144,20 @@ static void neuron_mutate(neuron_t *n, size_t depth, unsigned *count) {
 	*count = n->mutations;
 }
 
-/* These could be removed if the inverse of the scanner function existed */
-static cell_t c_weights = { .type = SYMBOL, .p.string = "weights" };
-static cell_t c_layer   = { .type = SYMBOL, .p.string = "layer" };
-static cell_t c_layers  = { .type = SYMBOL, .p.string = "layers" };
-
 static cell_t *neuron_serialize(neuron_t *n) {
-	cell_t *head = cons(&c_weights, nil());
-	cell_t *r = printer("neuron (bias %f) (mutations %d) (retro %f) (state %f %f %f %f) %x", n->bias, (intptr_t)n->mutations, n->retro_weight, n->state_weight, n->state_forget, n->state_accum, n->state_init, head);
-	assert(r);
+	cell_t *head = cons(mksym("weights"), nil());
 	cell_t *op = head;
 	for (size_t i = 0; i < n->weight_count; op = cdr(op), i++)
 		setcdr(op, cons(mkfloat(n->weights[i]), nil()));
+	cell_t *r = printer("neuron (bias %f) (mutations %d) (retro %f) (state %f %f %f %f) %x", n->bias, (intptr_t)n->mutations, n->retro_weight, 
+			n->state_weight, n->state_forget, n->state_accum, n->state_init, head);
+	assert(r);
 	return r;
 }
 
 static cell_t *layer_serialize(layer_t *layer) {
 	assert(layer);
-	cell_t *head = cons(&c_layer, nil());
+	cell_t *head = cons(mksym("layer"), nil());
 	cell_t *op   = head;
 	for (size_t i = 0; i < layer->length; op = cdr(op), i++)
 		setcdr(op, cons(neuron_serialize(layer->neurons[i]), nil()));
@@ -170,12 +166,12 @@ static cell_t *layer_serialize(layer_t *layer) {
 
 cell_t *brain_serialize(brain_t *b) {
 	assert(b);
-	cell_t *head = cons(&c_layers, nil());
-	cell_t *r    = printer("brain (depth %d) (length %d) %x", (intptr_t)(b->depth), (intptr_t)(b->length), head);
-	assert(r);
+	cell_t *head = cons(mksym("layers"), nil());
 	cell_t *op = head;
 	for (size_t i = 0; i < b->depth; op = cdr(op), i++)
 		setcdr(op, cons(layer_serialize(b->layers[i]), nil()));
+	cell_t *r = printer("brain (depth %d) (length %d) %x", (intptr_t)(b->depth), (intptr_t)(b->length), head);
+	assert(r);
 	return r;
 }
 

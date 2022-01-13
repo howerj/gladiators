@@ -206,7 +206,9 @@ static int world_save(world_t *w, const char *file) {
 	f = fopen(file, "wb");
 	if (!f)
 		goto fail;
+	note("here-a");
 	r = write_s_expression_to_file(c, f);
+	note("here-b");
 fail:
 	cell_delete(c);
 	if (f)
@@ -983,7 +985,8 @@ In headless mode any human players (if enabled) are not present.\n\
 /* TODO: Clean this mess up */
 static void save(void) {
 	if (world_save_at_exit)
-		world_save(world, WORLD_FILE);
+		if (world_save(world, WORLD_FILE) < 0)
+			error("world serialization failed");
 }
 
 /* TODO: Clean this mess up */

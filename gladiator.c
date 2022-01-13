@@ -202,22 +202,22 @@ cell_t *gladiator_serialize(gladiator_t *g) {
 	assert(b);
 	cell_t *c = printer(
 			"gladiator "
+			" %x"
 			"(x %f) (y %f) (orientation %f) "
 			"(field-of-view %f) "
 			"(health %f) "
 			"(team %d) (hits %d) (foods %d) "
 			"(energy %f) "
 			"(mutations %d) "
-			"(fitness %f) "
-			" %x ",
+			"(fitness %f) ",
+			b,
 			g->x, g->y, g->orientation,
 			g->field_of_view,
 			g->health,
 			(intptr_t)(g->team), (intptr_t)(g->hits), (intptr_t)(g->foods),
 			g->energy,
 			(intptr_t)g->mutations, 
-			g->fitness,
-			b);
+			g->fitness);
 	assert(c);
 	return c;
 }

@@ -148,6 +148,8 @@ one can last the longest.
 
 # To Do
 
+* A demonstration video should be made and linked to, perhaps uploaded to
+  YouTube.
 * The physics engine is a big dodgy and could use work
 * Work on adding a player: They should only be able to see what a gladiator
 can, which is quite limiting, adding to the challenge.
@@ -167,25 +169,6 @@ drop it off at a place could be made as well. This would probably require two
 more inputs; food carried and drop off point in vision.
 * Generate the manual page from this file
 * Make the program into a library with a CLI and GUI front end
-* Deep learning model; all neurons in layer one connected
-  to all neurons in subsequent layers
-* Have a list of variables to poke into, instead of a huge
-  list of inputs. Add results into float.
-* Memory variables, memory for each neuron
-* Customizable brains for fighters.
-* Other mixing and selection algorithms.
-* Work out bugs in serialization.
-* Add inertia, optional full wrapping of sensory data
-* Gladiator time out before each firing
-* Fix TODO comments
-* Write up experiment into website
-* Better physics; object collision (currently gladiators collide and overlap with each other)
-* Full toroidal arena option.
-* Better rendering?
-* Option to build pure C command line version, with no OpenGL references.
-* Use fixed point only?
-* More realistic projects (no team, optional reflection off walls, can hurt
-  firer)
 
 [GPGOAP]: https://github.com/stolk/GPGOAP
 [A video]: https://www.youtube.com/watch?v=u2t77mQmJiY

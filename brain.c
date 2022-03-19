@@ -11,6 +11,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+/* It might have been better to use fixed point arithmetic instead
+ * of floating point as it would make things far more deterministic,
+ * however, that boat has sailed (or more accurately I cannot be
+ * bothered to rewrite everything to use fixed point maths). It also
+ * might be faster, it also might not be.
+ *
+ * Speeding up the brain would drastically speed up simulation as
+ * well. */
 typedef struct {
 	size_t weight_count;
 	unsigned mutations;
@@ -149,8 +157,8 @@ static cell_t *neuron_serialize(neuron_t *n) {
 	cell_t *op = head;
 	for (size_t i = 0; i < n->weight_count; op = cdr(op), i++)
 		setcdr(op, cons(mkfloat(n->weights[i]), nil()));
-	cell_t *r = printer("neuron (bias %f) (mutations %d) (retro %f) (state %f %f %f %f) %x", n->bias, (intptr_t)n->mutations, n->retro_weight, 
-			n->state_weight, n->state_forget, n->state_accum, n->state_init, head);
+	cell_t *r = printer("neuron %x (bias %f) (mutations %d) (retro %f) (state %f %f %f %f)", 
+			head, n->bias, (intptr_t)n->mutations, n->retro_weight, n->state_weight, n->state_forget, n->state_accum, n->state_init);
 	assert(r);
 	return r;
 }
@@ -170,7 +178,7 @@ cell_t *brain_serialize(brain_t *b) {
 	cell_t *op = head;
 	for (size_t i = 0; i < b->depth; op = cdr(op), i++)
 		setcdr(op, cons(layer_serialize(b->layers[i]), nil()));
-	cell_t *r = printer("brain (depth %d) (length %d) %x", (intptr_t)(b->depth), (intptr_t)(b->length), head);
+	cell_t *r = printer("brain %x (depth %d) (length %d) ", head, (intptr_t)(b->depth), (intptr_t)(b->length));
 	assert(r);
 	return r;
 }
@@ -306,7 +314,7 @@ neuron_t *neuron_deserialize(cell_t *c, size_t length) {
 	double bias = 0, retro_weight = 0, state_weight = 0, state_forget = 0, state_accum = 0, state_init = 0;
 	intptr_t muts = 0;
 	cell_t *weights = NULL;
-	int r = scanner(c, "neuron (bias %f) (mutations %d) (retro %f) (state %f %f %f %f) (weights %l)", &bias, &muts, &retro_weight, &state_weight, &state_forget, &state_accum, &state_init, &weights);
+	int r = scanner(c, "neuron (weights %l) (bias %f) (mutations %d) (retro %f) (state %f %f %f %f) ", weights, &bias, &muts, &retro_weight, &state_weight, &state_forget, &state_accum, &state_init);
 	if (r < 0 || !weights) {
 		warning("neuron deserialization failed: %d", r);
 		return NULL;
@@ -352,7 +360,7 @@ fail:
 brain_t *brain_deserialize(cell_t *c) {
 	unsigned depth = 0, length = 0;
 	cell_t *layers = NULL;
-	int r = scanner(c, "brain (depth %u) (length %u) (layers %l ) ", &depth, &length, &layers);
+	int r = scanner(c, "brain (layers %l) (depth %u) (length %u) ", &layers, &depth, &length);
 	if (r < 0 || layers == NULL)
 		return NULL;
 	brain_t *b = brain_new(false, false, length, depth);

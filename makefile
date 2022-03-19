@@ -1,9 +1,9 @@
 ifeq ($(OS),Windows_NT) # Windows MinGW
-LDFLAGS  = -lfreeglut -lopengl32 -lm
+LDFLAGS  = -lfreeglut -lopengl32 -lm -L.
 else # Unixen
 LDFLAGS  = -lglut -lGL -lm
 endif
-CFLAGS   = -std=c99 -Wall -Wextra -g -O2 
+CFLAGS   = -std=c99 -Wall -Wextra -g -O2 -I.
 RM      := rm
 SOURCES := ${wildcard *.c}
 OBJECTS := ${SOURCES:%.c=%.o}
@@ -35,4 +35,4 @@ ${TARGET}.1: readme.md
 -include ${DEPS}
 
 clean:
-	${RM} -f *.o *.d *.out *.conf *.lsp ${TARGET} *.htm vgcore.* core
+	git clean -ffdx

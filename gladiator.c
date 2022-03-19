@@ -95,6 +95,7 @@ void gladiator_update(gladiator_t *g, const double inputs[], double outputs[]) {
 	g->enemy_gladiator_detected  = inputs[GLADIATOR_IN_VISION_ENEMY] > 0.0;
 	g->enemy_projectile_detected = inputs[GLADIATOR_IN_VISION_PROJECTILE] > 0.0;
 	g->food_detected = inputs[GLADIATOR_IN_VISION_FOOD] > 0.0;
+	/* TODO: Implement refire time out */
 	if (g->refire_timeout)
 		g->refire_timeout--;
 
@@ -174,13 +175,14 @@ gladiator_t *gladiator_copy(gladiator_t *g) {
 double gladiator_fitness(gladiator_t *g) {
 	assert(g);
 	double fitness = 0.0;
-	fitness += g->fitness * fitness_weight_ancestors;
-	fitness += g->health  * fitness_weight_health;
-	fitness += g->hits    * fitness_weight_hits;
-	fitness += g->energy  * fitness_weight_energy;
-	fitness += g->foods   * fitness_weight_food;
-	fitness += g->round   * fitness_weight_round;
+	fitness += g->fitness    * fitness_weight_ancestors;
+	fitness += g->health     * fitness_weight_health;
+	fitness += g->hits       * fitness_weight_hits;
+	fitness += g->energy     * fitness_weight_energy;
+	fitness += g->foods      * fitness_weight_food;
+	fitness += g->round      * fitness_weight_round;
 	fitness += g->time_alive * fitness_weight_time_alive;
+	fitness += g->fired      * fitness_weight_fired;
 	fitness += timer_result(&g->wall_contact_timer) * fitness_weight_wall_time;
 	return fitness;
 }
@@ -202,11 +204,11 @@ cell_t *gladiator_serialize(gladiator_t *g) {
 	assert(b);
 	cell_t *c = printer(
 			"gladiator "
-			" %x"
+			" %x "
 			"(x %f) (y %f) (orientation %f) "
 			"(field-of-view %f) "
 			"(health %f) "
-			"(team %d) (hits %d) (foods %d) "
+			"(team %d) (hits %d) (foods %d) (fired %d) "
 			"(energy %f) "
 			"(mutations %d) "
 			"(fitness %f) ",
@@ -214,7 +216,7 @@ cell_t *gladiator_serialize(gladiator_t *g) {
 			g->x, g->y, g->orientation,
 			g->field_of_view,
 			g->health,
-			(intptr_t)(g->team), (intptr_t)(g->hits), (intptr_t)(g->foods),
+			(intptr_t)(g->team), (intptr_t)(g->hits), (intptr_t)(g->foods), (intptr_t)(g->fired),
 			g->energy,
 			(intptr_t)g->mutations, 
 			g->fitness);
@@ -227,27 +229,27 @@ gladiator_t *gladiator_deserialize(cell_t *c) {
 	gladiator_t *g = gladiator_new(0, 0, 0, 0);
 	brain_delete(g->brain);
 	g->brain = NULL;
-	intptr_t team = 0, hits = 0, foods = 0, mutations = 0;
+	intptr_t team = 0, hits = 0, foods = 0, mutations = 0, fired = 0;
 	cell_t *cb = NULL;
 
 	int r = scanner(c,
 			"gladiator "
+			" %x "
 			"(x %f) (y %f) (orientation %f) "
 			"(field-of-view %f) "
 			"(health %f) "
-			"(team %d) (hits %d) (foods %d) "
+			"(team %d) (hits %d) (foods %d) (fired %d) "
 			"(energy %f) "
 			"(mutations %d) "
-			"(fitness %f) "
-			" %x ",
+			"(fitness %f) ",
+			&cb,
 			&g->x, &g->y, &g->orientation,
 			&g->field_of_view,
 			&g->health,
-			&team, &hits, &foods,
+			&team, &hits, &foods, &fired,
 			&g->energy,
 			&mutations, 
-			&g->fitness,
-			&cb);
+			&g->fitness);
 	if (r < 0) {
 		warning("gladiator deserialization failed");
 		return NULL;
@@ -262,6 +264,7 @@ gladiator_t *gladiator_deserialize(cell_t *c) {
 	g->hits = hits;
 	g->foods = foods;
 	g->mutations = mutations;
+	g->fired = fired;
 	return g;
 }
 

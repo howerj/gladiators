@@ -54,9 +54,10 @@ typedef enum {
 	X(double,    fitness_weight_food,                0.2,     NEGT,   BIGS, "Fitness weight for food objects that the gladiator has collected")\
 	X(double,    fitness_weight_health,              1.5,     NEGT,   BIGS, "Fitness weight for remaining gladiator health")\
 	X(double,    fitness_weight_hits,                1.0,     NEGT,   BIGS, "Fitness weight for number of hits scored")\
+	X(double,    fitness_weight_fired,               0.00,    NEGT,   BIGS, "Fitness weight for firing a shot")\
 	X(double,    fitness_weight_round,               1.000,   NEGT,   BIGS, "Fitness weight for getting into a higher round")\
 	X(double,    fitness_weight_wall_time,           0.0,     NEGT,   BIGS, "Fitness weight for time spent hugging the wall in excess of the wall counter")\
-	X(double,    fitness_weight_time_alive,          0.000,   NEGT,   BIGS, "Fitness weight for time spend alive")\
+	X(double,    fitness_weight_time_alive,          0.000,   NEGT,   BIGS, "Fitness weight for time spent alive")\
 	X(bool,      food_active,                        false,   ZERO,   EINS, "Are the food objects active?")\
 	X(unsigned,  food_control_method,                1,       ZERO,   1.0,  "Food control method (0 = random walk, 1 = bound, 2 = avoid gladiator (not implemented))")\
 	X(double,    food_distance_per_tick,             0.01,    NEGT,   BIGS, "Method the food moves per tick, depending on the food control method")\
@@ -66,7 +67,7 @@ typedef enum {
 	X(double,    food_size,                          1.0,     SMOL,   BIGS, "How big is the food?")\
 	X(unsigned,  gladiator_bounce_off_walls,         false,   ZERO,   BIGS, "Do the gladiators bounce off of the walls, or not?")\
 	X(unsigned,  gladiator_brain_depth,              2,       EINS,   BIGS, "Number of layers in the Artificial Neural Network for each gladiator")\
-	X(unsigned,  gladiator_brain_length,             8,       6.0,   BIGS, "Number of neurons per layer in the Artificial Neural Network for each gladiator, must not be less than the number of inputs to the gladiator, even if that input is not active")\
+	X(unsigned,  gladiator_brain_length,             8,       6.0,    BIGS, "Number of neurons per layer in the Artificial Neural Network for each gladiator, must not be less than the number of inputs to the gladiator, even if that input is not active")\
 	X(double,    gladiator_distance_per_tick,        1.0,     NEGT,   BIGS, "The amount a gladiator can move per tick")\
 	X(double,    gladiator_energy_increment,         1.0,     NEGT,   BIGS, "The amount of energy a gladiator can gain per tick")\
 	X(double,    gladiator_field_of_view_divisor,    1.00,    SMOL,   BIGS, "Divisor for field of view changes")\

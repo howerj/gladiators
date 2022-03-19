@@ -21,6 +21,7 @@ typedef struct {
 	unsigned team; /**< this gladiators team*/
 	unsigned hits; /**< hits the gladiator scored on other gladiators*/
 	unsigned foods; /**< number of food items collected*/
+	unsigned fired; /**< number of times the gladiator has fired */
 	unsigned round; /**< current round gladiator is in*/
 	double energy; /**< energy of gladiator, needed to fire weapon*/
 	bool enemy_gladiator_detected; /**< set true if enemy has been detected*/

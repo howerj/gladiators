@@ -109,6 +109,8 @@ void random_seed(double seed) {
 	rstate.seed[0] = seed;
 }
 
+/* Using fixed point instead of floats throughout would have
+ * had the advantage of things being far more reproducible. */
 double random_float(void) {
 	static bool set = false;
 	if (!set) {

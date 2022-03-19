@@ -407,11 +407,10 @@ static int _write_s_expression_to_file(cell_t *cell, FILE *output, unsigned dept
 	assert(cell && output);
 	if (!cell)
 		fatal("unexpected NULL");
-	fflush(output);
 	switch (cell->type) {
 	case NIL:      return fprintf(output, "() ");
 	case INTEGER:  return fprintf(output, "%"PRIdPTR" ", cell->p.integer);
-	case FLOATING: return fprintf(output, "%.3lf ", cell->p.floating);
+	case FLOATING: return fprintf(output, "%g ", cell->p.floating);
 	case SYMBOL:   return fprintf(output, "%s ", cell->p.string);
 	case STRING:   return print_escaped_string(cell->p.string, output);
 	case CONS:
@@ -426,11 +425,9 @@ static int _write_s_expression_to_file(cell_t *cell, FILE *output, unsigned dept
 		if ((f = fputc('(', output)) < 0)
 			return f;
 		r++;
-		for (; cell->type == CONS; cell = cell->p.cons.cdr) {
+		for ( ; cell->type != NIL; cell = cell->p.cons.cdr, r += f)
 			if ((f = _write_s_expression_to_file(cell->p.cons.car, output, depth+1)) < 0)
 				return f;
-			r += f;
-		}
 		if ((f = fputs(")", output)) < 0)
 			return f;
 		return r + f;
@@ -498,13 +495,11 @@ static int _expect(cell_t *c, cell_type_e t, const char *file, const char *func,
  *  d = integer
  *  s = string
  *  S = symbol */
-static int _vscanner(cell_t *c, int i, const char *fmt, va_list alist) {
+static int _vscanner(cell_t *c, int i, const char *fmt, va_list ap) {
 	char f = 0;
 	assert(c);
 	assert(fmt);
 	assert(type(c) == CONS);
-	va_list ap;
-	va_copy(ap, alist);
 	while ((f = fmt[i])) {
 		if (isspace(f)) {
 			i++;
@@ -514,10 +509,10 @@ static int _vscanner(cell_t *c, int i, const char *fmt, va_list alist) {
 			if (expect(c, NIL))
 				return i;
 			else
-				goto fail;
+				return -1;
 		}
 		if (!expect(c, CONS))
-			goto fail;
+			return -1;
 		if ('%' == fmt[i]) {
 			bool ignore = false;
 			if ('*' == (f = fmt[++i])) {
@@ -532,7 +527,7 @@ static int _vscanner(cell_t *c, int i, const char *fmt, va_list alist) {
 			{
 				bool list = f == 'l';
 				if (!expect(list ? c : ca, CONS))
-					goto fail;
+					return -1;
 				if (ignore)
 					break;
 				cell_t **v = va_arg(ap, cell_t **);
@@ -552,7 +547,7 @@ static int _vscanner(cell_t *c, int i, const char *fmt, va_list alist) {
 			case 'f':
 			{
 				if (!expect(ca, FLOATING))
-					goto fail;
+					return -1;
 				if (ignore)
 					break;
 				double *d = va_arg(ap, double *);
@@ -563,7 +558,7 @@ static int _vscanner(cell_t *c, int i, const char *fmt, va_list alist) {
 			case 'd':
 			{
 				if (!expect(ca, INTEGER))
-					goto fail;
+					return -1;
 				if (ignore)
 					break;
 				intptr_t *dp = va_arg(ap, intptr_t *);
@@ -571,14 +566,14 @@ static int _vscanner(cell_t *c, int i, const char *fmt, va_list alist) {
 				*dp = d;
 				if (f == 'u' && d < 0) {
 					fprintf(stderr, "expected unsigned number (got %"PRIdPTR")\n", d);
-					goto fail;
+					return -1;
 				}
 				break;
 			}
 			case 's':
 			{
 				if (!expect(ca, STRING))
-					goto fail;
+					return -1;
 				if (ignore)
 					break;
 				char **s = va_arg(ap, char **);
@@ -588,7 +583,7 @@ static int _vscanner(cell_t *c, int i, const char *fmt, va_list alist) {
 			case 'S':
 			{
 				if (!expect(ca, SYMBOL))
-					goto fail;
+					return -1;
 				if (ignore)
 					break;
 				char **s = va_arg(ap, char **);
@@ -598,7 +593,7 @@ static int _vscanner(cell_t *c, int i, const char *fmt, va_list alist) {
 			case 'n':
 			{
 				if (!expect(ca, NIL))
-					goto fail;
+					return -1;
 				break;
 			}
 			case '\0':
@@ -608,8 +603,11 @@ static int _vscanner(cell_t *c, int i, const char *fmt, va_list alist) {
 			i++;
 		} else if ('(' == f) {
 			if (!expect(car(c), CONS))
-				goto fail;
-			int r = _vscanner(car(c), ++i, fmt, ap);
+				return -1;
+			va_list ap2;
+			va_copy(ap2, ap);
+			int r = _vscanner(car(c), ++i, fmt, ap2);
+			va_end(ap2);
 			if (r < 0)
 				return r;
 			i += (r-i+1);
@@ -618,40 +616,36 @@ static int _vscanner(cell_t *c, int i, const char *fmt, va_list alist) {
 			if (f == '"') { /* string literal */
 				size_t j = 0;
 				if (!expect(car(c), STRING))
-					goto fail;
+					return -1;
 				while (strchr("\"", fmt[i])) {
 					if (fmt[i] == '\\')
 						i++;
 					s[j++] = fmt[i++];
 				}
 				if (strcmp(STR(car(c)), s))
-					goto fail;
+					return -1;
 			} else { /* symbol literal */
 				size_t j = 0;
 				if (!expect(car(c), SYMBOL))
-					goto fail;
+					return -1;
 				while (!strchr("()*%\" \t\n\r\v", fmt[i]))
 					s[j++] = fmt[i++];
 				if (strcmp(SYM(car(c)), s))
-					goto fail;
+					return -1;
 			}
 		}
 		c = cdr(c);
 	}
-	va_end(ap);
 	return i;
-fail:
-	va_end(ap);
-	return -1;
 }
 
-int vscanner(cell_t *c, const char *fmt, va_list alist) {
+int vscanner(cell_t *c, const char *fmt, va_list ap) {
 	assert(c);
 	assert(fmt);
-	va_list ap;
-	va_copy(ap, alist);
-	const int r = _vscanner(c, 0, fmt, ap);
-	va_end(ap);
+	va_list ap2;
+	va_copy(ap2, ap);
+	const int r = _vscanner(c, 0, fmt, ap2);
+	va_end(ap2);
 	return r;
 }
 
@@ -663,11 +657,9 @@ cell_t *printer(const char *fmt, ...) {
 	return c;
 }
 
-static cell_t *_vprinter(int *i, const char *fmt, va_list alist) {
+static cell_t *_vprinter(int *i, const char *fmt, va_list ap) {
 	assert(i);
 	assert(fmt);
-	va_list ap;
-	va_copy(ap, alist);
 	cell_t *head = cell_new(CONS);
 	cell_t *c = head, *prev = NULL;
 	for(char f = 0; (f = fmt[*i]); ) {
@@ -730,7 +722,10 @@ static cell_t *_vprinter(int *i, const char *fmt, va_list alist) {
 			(*i)++;
 		} else if (f == '(') {
 			(*i)++;
-			cell_t *v = _vprinter(i, fmt, ap);
+			va_list ap2;
+			va_copy(ap2, ap);
+			cell_t *v = _vprinter(i, fmt, ap2);
+			va_end(ap2);
 			cell_t *n = cell_new(CONS);
 			c->p.cons.car = v;
 			c->p.cons.cdr = n;
@@ -745,6 +740,9 @@ static cell_t *_vprinter(int *i, const char *fmt, va_list alist) {
 			} else {
 				v = parse_symbol_or_number(l);
 			}
+			/* TODO: Error handling 
+			if (!v)
+				goto end; */
 			n = cell_new(CONS);
 			c->p.cons.car = v;
 			c->p.cons.cdr = n;
@@ -756,7 +754,6 @@ static cell_t *_vprinter(int *i, const char *fmt, va_list alist) {
 		}
 	}
 end:
-	va_end(ap);
 	if (!prev)
 		return nil();
 	if (!(c->p.cons.car))
@@ -765,11 +762,11 @@ end:
 	return head;
 }
 
-cell_t *vprinter(const char *fmt, va_list alist) {
+cell_t *vprinter(const char *fmt, va_list ap) {
 	int i = 0;
-	va_list ap;
-	va_copy(ap, alist);
-	cell_t *r = _vprinter(&i, fmt, ap);
-	va_end(ap);
+	va_list ap2;
+	va_copy(ap2, ap);
+	cell_t *r = _vprinter(&i, fmt, ap2);
+	va_end(ap2);
 	return r;
 }

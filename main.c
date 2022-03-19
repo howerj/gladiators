@@ -13,7 +13,9 @@
  * feature would networking would also be cool, but really not needed.
  * - A more object oriented view of doing things would help, with position
  * objects and intersection functions, would make adding new objects far
- * easier.*/
+ * easier.
+ *
+ * TODO: Improve the systems physics and firing characteristics. */
 
 #include "util.h"
 #include "gladiator.h"
@@ -206,9 +208,7 @@ static int world_save(world_t *w, const char *file) {
 	f = fopen(file, "wb");
 	if (!f)
 		goto fail;
-	note("here-a");
 	r = write_s_expression_to_file(c, f);
-	note("here-b");
 fail:
 	cell_delete(c);
 	if (f)
@@ -223,6 +223,7 @@ static world_t *world_load(const char *file) {
 	f = fopen(file, "rb");
 	if (!f)
 		goto fail;
+	setvbuf(f, NULL, _IONBF, 0);
 	c = read_s_expression_from_file(f);
 	if (!c)
 		goto fail;
@@ -463,6 +464,7 @@ static void update_gladiator_outputs(gladiator_t *g, world_t *w, double outputs[
 		if (!(g->refire_timeout)) {
 			if (projectile_fire(p, g->team, g->x, g->y, g->orientation, &g->color)) {
 				g->refire_timeout = gladiator_fire_timeout;
+				g->fired += 1;
 				g->energy -= projectile_energy_cost;
 			}
 		}
@@ -982,11 +984,10 @@ In headless mode any human players (if enabled) are not present.\n\
 	return 0;
 }
 
-/* TODO: Clean this mess up */
+/* TODO: Make it so this is specified via the command line only. */
 static void save(void) {
 	if (world_save_at_exit)
-		if (world_save(world, WORLD_FILE) < 0)
-			error("world serialization failed");
+		world_save(world, WORLD_FILE);
 }
 
 /* TODO: Clean this mess up */

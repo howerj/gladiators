@@ -16,6 +16,9 @@
 #include <time.h>
 #include <GL/glut.h>
 
+/* TODO: A completely headless version of the system should be
+ * made, that can be compiled without the GUI libraries, perhaps
+ * rendering could be to video instead...*/
 /* TODO: Make it so we can customize this, along with font? */
 #define FONT_HEIGHT (15)
 #define FONT_WIDTH  (9)

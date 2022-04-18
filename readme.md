@@ -16,6 +16,9 @@ arena [-] [-h] [-v] [-s] [-p] [-H]
 	Email:      howe.r.j.89@gmail.com
 	Copyright:  2016-2020 Richard James Howe
 
+**The serialization code is currently broken, if you have a file
+called "gladiator.lsp" delete it and re-run again**.
+
 This is a simple toy program designed to display a series of 'gladiators'
 that can fire at and evade each other. The gladiators are controlled by a
 neural network, which gets mutated and bred every generation of gladiators.
@@ -47,6 +50,16 @@ most of the general details are explained there does not seem to be any
 source code for this application, which is a shame, the video shows the
 gladiators learning how to move, how to fire, and eventually how to dodge enemy
 projectiles.
+
+Here are some videos of the evolved gladiators running:
+
+[gladiators-1.gif][]
+
+And:
+
+[gladiators-2.gif][]
+
+There is still a lot to improve, but the system works.
 
 # LICENSE
 

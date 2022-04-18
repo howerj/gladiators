@@ -53,11 +53,11 @@ projectiles.
 
 Here are some videos of the evolved gladiators running:
 
-[gladiators-1.gif][]
+![After many generations](gladiators-1.gif)
 
 And:
 
-[gladiators-2.gif][]
+![Afer more](gladiators-2.gif)
 
 There is still a lot to improve, but the system works.
 

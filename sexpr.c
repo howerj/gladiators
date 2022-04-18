@@ -410,7 +410,7 @@ static int _write_s_expression_to_file(cell_t *cell, FILE *output, unsigned dept
 	switch (cell->type) {
 	case NIL:      return fprintf(output, "() ");
 	case INTEGER:  return fprintf(output, "%"PRIdPTR" ", cell->p.integer);
-	case FLOATING: return fprintf(output, "%g ", cell->p.floating);
+	case FLOATING: return fprintf(output, "%e ", cell->p.floating);
 	case SYMBOL:   return fprintf(output, "%s ", cell->p.string);
 	case STRING:   return print_escaped_string(cell->p.string, output);
 	case CONS:
@@ -546,12 +546,13 @@ static int _vscanner(cell_t *c, int i, const char *fmt, va_list ap) {
 			}
 			case 'f':
 			{
+				int floating = 1;
 				if (!expect(ca, FLOATING))
 					return -1;
 				if (ignore)
 					break;
 				double *d = va_arg(ap, double *);
-				*d = FLT(ca);
+				*d = floating ? FLT(ca) : INT(ca);
 				break;
 			}
 			case 'u':
@@ -604,10 +605,10 @@ static int _vscanner(cell_t *c, int i, const char *fmt, va_list ap) {
 		} else if ('(' == f) {
 			if (!expect(car(c), CONS))
 				return -1;
-			va_list ap2;
-			va_copy(ap2, ap);
-			int r = _vscanner(car(c), ++i, fmt, ap2);
-			va_end(ap2);
+			//va_list ap2;
+			//va_copy(ap2, ap);
+			int r = _vscanner(car(c), ++i, fmt, ap/*ap2*/);
+			//va_end(ap2);
 			if (r < 0)
 				return r;
 			i += (r-i+1);
@@ -722,10 +723,10 @@ static cell_t *_vprinter(int *i, const char *fmt, va_list ap) {
 			(*i)++;
 		} else if (f == '(') {
 			(*i)++;
-			va_list ap2;
-			va_copy(ap2, ap);
-			cell_t *v = _vprinter(i, fmt, ap2);
-			va_end(ap2);
+			//va_list ap2;
+			//va_copy(ap2, ap);
+			cell_t *v = _vprinter(i, fmt, ap /*ap2*/);
+			//va_end(ap2);
 			cell_t *n = cell_new(CONS);
 			c->p.cons.car = v;
 			c->p.cons.cdr = n;

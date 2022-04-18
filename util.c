@@ -30,7 +30,6 @@ void fatal(char *fmt, ...) {
 }
 
 void *allocate(size_t sz) {
-	assert(sz);
 	void *r = calloc(sz, 1);
 	if (!r)
 		fatal("allocation failed of size %zu\n", sz);

@@ -158,7 +158,7 @@ static cell_t *neuron_serialize(neuron_t *n) {
 	for (size_t i = 0; i < n->weight_count; op = cdr(op), i++)
 		setcdr(op, cons(mkfloat(n->weights[i]), nil()));
 	cell_t *r = printer("neuron %x (bias %f) (mutations %d) (retro %f) (state %f %f %f %f)", 
-			head, n->bias, (intptr_t)n->mutations, n->retro_weight, n->state_weight, n->state_forget, n->state_accum, n->state_init);
+		head, n->bias, (intptr_t)(n->mutations), n->retro_weight, n->state_weight, n->state_forget, n->state_accum, n->state_init);
 	assert(r);
 	return r;
 }
@@ -178,7 +178,7 @@ cell_t *brain_serialize(brain_t *b) {
 	cell_t *op = head;
 	for (size_t i = 0; i < b->depth; op = cdr(op), i++)
 		setcdr(op, cons(layer_serialize(b->layers[i]), nil()));
-	cell_t *r = printer("brain %x (depth %d) (length %d) ", head, (intptr_t)(b->depth), (intptr_t)(b->length));
+	cell_t *r = printer("brain %x (depth %d) (length 14) ", head, (intptr_t)(b->depth), (intptr_t)(b->length));
 	assert(r);
 	return r;
 }
@@ -358,17 +358,19 @@ fail:
 }
 
 brain_t *brain_deserialize(cell_t *c) {
-	unsigned depth = 0, length = 0;
+	unsigned depth = 0, length = 0, i = 0;
 	cell_t *layers = NULL;
+	brain_t *b = NULL;
 	int r = scanner(c, "brain (layers %l) (depth %u) (length %u) ", &layers, &depth, &length);
 	if (r < 0 || layers == NULL)
-		return NULL;
-	brain_t *b = brain_new(false, false, length, depth);
-	unsigned i;
-	for (i = 0; type(layers) != NIL; i++, layers = cdr(layers)) {
+		goto fail;
+	b = brain_new(false, false, length, depth);
+	if (!b) 
+		goto fail;
+	for (i = 0; type(layers) != NIL && i < depth; i++, layers = cdr(layers)) {
 		if (type(car(layers)) != CONS) {
 			warning("invalid configuration: layer is not list");
-			return NULL;
+			goto fail;
 		}
 		b->layers[i] = layer_deserialize(car(layers), length);
 		if (!b->layers[i]) {
@@ -378,6 +380,7 @@ brain_t *brain_deserialize(cell_t *c) {
 	}
 	return b;
 fail:
+	cell_delete(layers);
 	brain_delete(b);
 	return NULL;
 }

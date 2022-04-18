@@ -81,7 +81,7 @@ static cell_t *world_serialize(world_t *w) {
 	for (size_t i = 0; i < w->food_count; op = cdr(op), i++)
 		setcdr(op, cons(food_serialize(w->fs[i]), nil()));
 	cell_t *c = printer(
-			"world %x %x %x %x %x"
+			"world %x %x %x %x %x "
 			"(gladiator-count %d) "
 			"(gladiator-rounds %d) "
 			"(projectile-count %d) "
@@ -112,7 +112,7 @@ static world_t *world_deserialize(cell_t *c) {
 	cell_t *configuration = NULL, *gs = NULL,  *ps = NULL, *fs = NULL, *player = NULL;
 	uintptr_t gsc = 0, grnd = 0, psc = 0, fsc = 0, generation = 0, alive = 0, tick = 0, round = 0, match = 0;
 	int r = scanner(c,
-		"world %x %x %x %x %x"
+		"world %x %x %x %x %x "
 		"(gladiator-count %d) "
 		"(gladiator-rounds %d) "
 		"(projectile-count %d) "
@@ -135,12 +135,12 @@ static world_t *world_deserialize(cell_t *c) {
 		goto fail;
 	const size_t total = gsc * (1ull << grnd);
 	if (gsc)
-		w->population = allocate(sizeof(*gs) * total);
+		w->population = allocate(sizeof(*w->gs) * total);
 	w->gs = w->population;
 	if (psc)
-		w->ps = allocate(sizeof(*ps) * psc);
+		w->ps = allocate(sizeof(*w->ps) * psc);
 	if (fsc)
-		w->fs = allocate(sizeof(*fs) * fsc);
+		w->fs = allocate(sizeof(*w->fs) * fsc);
 	if (gsc)
 		gs = cdr(gs);
 	size_t i = 0;

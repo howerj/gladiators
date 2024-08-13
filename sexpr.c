@@ -366,7 +366,9 @@ static int print_escaped_string(const char *s, FILE *output) {
 	int r = 1, f = 0;
 	if ((f = fputc('"', output)) < 0)
 		return f;
-	for (size_t i = 0; s[i]; i++)
+	if (fflush(output) < 0) return -1;
+	for (size_t i = 0; s[i]; i++) {
+		if (fflush(output) < 0) return -1;
 		switch (s[i]) {
 		case '\\':
 			if ((f = fputs("\\\\", output)) < 0)
@@ -389,8 +391,10 @@ static int print_escaped_string(const char *s, FILE *output) {
 			r += 1;
 			break;
 		}
+	}
 	if ((f = fputs("\" ", output)) < 0)
 		return f;
+	if (fflush(output) < 0) return -1;
 	r += f;
 	return r;
 }
@@ -407,10 +411,11 @@ static int _write_s_expression_to_file(cell_t *cell, FILE *output, unsigned dept
 	assert(cell && output);
 	if (!cell)
 		fatal("unexpected NULL");
+	if (fflush(output) < 0) return -1;
 	switch (cell->type) {
 	case NIL:      return fprintf(output, "() ");
 	case INTEGER:  return fprintf(output, "%"PRIdPTR" ", cell->p.integer);
-	case FLOATING: return fprintf(output, "%g ", cell->p.floating);
+	case FLOATING: return fprintf(output, "%.5f ", cell->p.floating);
 	case SYMBOL:   return fprintf(output, "%s ", cell->p.string);
 	case STRING:   return print_escaped_string(cell->p.string, output);
 	case CONS:
@@ -505,7 +510,7 @@ static int _vscanner(cell_t *c, int i, const char *fmt, va_list ap) {
 			i++;
 			continue;
 		}
-		if (')' == f) {
+		if (')' == f) { // ??
 			if (expect(c, NIL))
 				return i;
 			else
@@ -515,10 +520,11 @@ static int _vscanner(cell_t *c, int i, const char *fmt, va_list ap) {
 			return -1;
 		if ('%' == fmt[i]) {
 			bool ignore = false;
-			if ('*' == (f = fmt[++i])) {
+			if ('*' == fmt[i + 1]) {
 				i++;
 				ignore = true;
 			}
+			i++;
 
 			cell_t *ca = car(c);
 			switch ((f = fmt[i])) {
@@ -528,9 +534,9 @@ static int _vscanner(cell_t *c, int i, const char *fmt, va_list ap) {
 				bool list = f == 'l';
 				if (!expect(list ? c : ca, CONS))
 					return -1;
+				cell_t **v = va_arg(ap, cell_t **);
 				if (ignore)
 					break;
-				cell_t **v = va_arg(ap, cell_t **);
 				*v = list ? c : ca;
 				if (list)
 					return i;
@@ -548,9 +554,9 @@ static int _vscanner(cell_t *c, int i, const char *fmt, va_list ap) {
 			{
 				if (!expect(ca, FLOATING))
 					return -1;
+				double *d = va_arg(ap, double *);
 				if (ignore)
 					break;
-				double *d = va_arg(ap, double *);
 				*d = FLT(ca);
 				break;
 			}
@@ -559,9 +565,9 @@ static int _vscanner(cell_t *c, int i, const char *fmt, va_list ap) {
 			{
 				if (!expect(ca, INTEGER))
 					return -1;
+				intptr_t *dp = va_arg(ap, intptr_t *);
 				if (ignore)
 					break;
-				intptr_t *dp = va_arg(ap, intptr_t *);
 				intptr_t d = INT(ca);
 				*dp = d;
 				if (f == 'u' && d < 0) {
@@ -574,9 +580,9 @@ static int _vscanner(cell_t *c, int i, const char *fmt, va_list ap) {
 			{
 				if (!expect(ca, STRING))
 					return -1;
+				char **s = va_arg(ap, char **);
 				if (ignore)
 					break;
-				char **s = va_arg(ap, char **);
 				*s = STR(ca);
 				break;
 			}
@@ -584,9 +590,9 @@ static int _vscanner(cell_t *c, int i, const char *fmt, va_list ap) {
 			{
 				if (!expect(ca, SYMBOL))
 					return -1;
+				char **s = va_arg(ap, char **);
 				if (ignore)
 					break;
-				char **s = va_arg(ap, char **);
 				*s = STR(c);
 				break;
 			}
@@ -604,10 +610,11 @@ static int _vscanner(cell_t *c, int i, const char *fmt, va_list ap) {
 		} else if ('(' == f) {
 			if (!expect(car(c), CONS))
 				return -1;
-			va_list ap2;
-			va_copy(ap2, ap);
-			int r = _vscanner(car(c), ++i, fmt, ap2);
-			va_end(ap2);
+			//va_list ap2;
+			//va_copy(ap2, ap);
+			//int r = _vscanner(car(c), ++i, fmt, ap2);
+			//va_end(ap2);
+			int r = _vscanner(car(c), ++i, fmt, ap);
 			if (r < 0)
 				return r;
 			i += (r-i+1);
@@ -722,10 +729,11 @@ static cell_t *_vprinter(int *i, const char *fmt, va_list ap) {
 			(*i)++;
 		} else if (f == '(') {
 			(*i)++;
-			va_list ap2;
-			va_copy(ap2, ap);
-			cell_t *v = _vprinter(i, fmt, ap2);
-			va_end(ap2);
+			//va_list ap2;
+			//va_copy(ap2, ap);
+			//cell_t *v = _vprinter(i, fmt, ap2);
+			//va_end(ap2);
+			cell_t *v = _vprinter(i, fmt, ap);
 			cell_t *n = cell_new(CONS);
 			c->p.cons.car = v;
 			c->p.cons.cdr = n;

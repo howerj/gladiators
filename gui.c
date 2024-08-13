@@ -243,9 +243,9 @@ int vdraw_text(const color_t *color, double x, double y, const char *fmt, va_lis
 		switch (f = *fmt++) {
 		case 'c':
 		{
-			char x[2] = {0, 0};
-			x[0] = va_arg(ap, int);
-			r += draw_string(x);
+			char vl[2] = {0, 0};
+			vl[0] = va_arg(ap, int);
+			r += draw_string(vl);
 			break;
 		}
 		case 's':

@@ -182,6 +182,8 @@ drop it off at a place could be made as well. This would probably require two
 more inputs; food carried and drop off point in vision.
 * Generate the manual page from this file
 * Make the program into a library with a CLI and GUI front end
+* Add obstacles that can be viewed by the gladiators, so they can
+navigate around them, this might encourage more movement and fewer snipers.
 
 [GPGOAP]: https://github.com/stolk/GPGOAP
 [A video]: https://www.youtube.com/watch?v=u2t77mQmJiY

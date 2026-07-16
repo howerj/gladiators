@@ -127,10 +127,11 @@ static world_t *world_deserialize(cell_t *c) {
 		&gsc, &grnd, &psc, &fsc,
 		&generation, &alive, &tick,
 		&round, &match);
-	if (r < 0) {
+	/*if (r < 0) {
 		warning("world deserialization failed for <%p>", c);
+		write_s_expression_to_file(c, stderr);
 		return NULL;
-	}
+	}*/
 	if (config_deserialize(configuration) < 0)
 		goto fail;
 	const size_t total = gsc * (1ull << grnd);
@@ -146,6 +147,8 @@ static world_t *world_deserialize(cell_t *c) {
 	size_t i = 0;
 	for (i = 0 ; i < total && type(gs) != NIL; i++, gs = cdr(gs)) {
 		cell_type_e wt = type(car(gs));
+		fprintf(stderr, "gladiator deserializing:\n");
+		write_s_expression_to_file(car(gs), stderr);
 		if (wt != CONS || !(w->gs[i] = gladiator_deserialize(car(gs)))) {
 			warning("gladiator deserialization failed");
 			goto fail;

@@ -29,6 +29,9 @@ run: ${TARGET}
 gladiator.conf: ${TARGET}
 	./${TARGET} -s
 
+unit: unit.c sexpr.o util.o
+	${CC} ${CFLAGS} $< -o $@
+
 ${TARGET}.1: readme.md
 	pandoc -s -f markdown -t man $< -o $@
 

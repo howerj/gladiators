@@ -271,7 +271,7 @@ static cell_t *parse_symbol_or_number(lexer_t *l) {
 			unget_char(l, ch);
 			char *end = s;
 			errno = 0;
-			c->p.integer = strtol(s, &end, 0);
+			c->p.integer = strtol(s, &end, 0); // TODO: Terrible way of parsing, this fails when expecting a float...
 			if (!*end && !errno) {
 				c->type = INTEGER;
 				return c;
@@ -510,12 +510,16 @@ static int _vscanner(cell_t *c, int i, const char *fmt, va_list ap) {
 			i++;
 			continue;
 		}
+
+		//if (type(c) == NIL)
+		//	return i;
 		if (')' == f) { // ??
-			if (expect(c, NIL))
-				return i;
+			if (!expect(c, NIL))
+				return i + 1;
 			else
 				return -1;
 		}
+
 		if (!expect(c, CONS))
 			return -1;
 		if ('%' == fmt[i]) {
@@ -593,7 +597,7 @@ static int _vscanner(cell_t *c, int i, const char *fmt, va_list ap) {
 				char **s = va_arg(ap, char **);
 				if (ignore)
 					break;
-				*s = STR(c);
+				*s = SYM(ca);
 				break;
 			}
 			case 'n':
@@ -649,11 +653,12 @@ static int _vscanner(cell_t *c, int i, const char *fmt, va_list ap) {
 int vscanner(cell_t *c, const char *fmt, va_list ap) {
 	assert(c);
 	assert(fmt);
-	va_list ap2;
-	va_copy(ap2, ap);
-	const int r = _vscanner(c, 0, fmt, ap2);
-	va_end(ap2);
-	return r;
+	//va_list ap2;
+	//va_copy(ap2, ap);
+	//const int r = _vscanner(c, 0, fmt, ap2);
+	//va_end(ap2);
+	//return r;
+	return _vscanner(c, 0, fmt, ap);
 }
 
 cell_t *printer(const char *fmt, ...) {
@@ -772,9 +777,10 @@ end:
 
 cell_t *vprinter(const char *fmt, va_list ap) {
 	int i = 0;
-	va_list ap2;
-	va_copy(ap2, ap);
-	cell_t *r = _vprinter(&i, fmt, ap2);
-	va_end(ap2);
-	return r;
+	//va_list ap2;
+	//va_copy(ap2, ap);
+	//cell_t *r = _vprinter(&i, fmt, ap2);
+	//va_end(ap2);
+	//return r;
+	return _vprinter(&i, fmt, ap);
 }

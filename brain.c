@@ -365,7 +365,7 @@ brain_t *brain_deserialize(cell_t *c) {
 		return NULL;
 	brain_t *b = brain_new(false, false, length, depth);
 	unsigned i;
-	for (i = 0; type(layers) != NIL; i++, layers = cdr(layers)) {
+	for (i = 0; layers && type(layers) != NIL; i++, layers = cdr(layers)) {
 		if (type(car(layers)) != CONS) {
 			warning("invalid configuration: layer is not list");
 			return NULL;

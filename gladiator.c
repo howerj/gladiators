@@ -251,8 +251,8 @@ gladiator_t *gladiator_deserialize(cell_t *c) {
 			&mutations, 
 			&g->fitness);
 	if (r < 0) {
-		warning("gladiator deserialization failed");
-		return NULL;
+		//warning("gladiator deserialization failed");
+		//return NULL;
 	}
 	brain_t *b = brain_deserialize(cb);
 	if (!b) {
